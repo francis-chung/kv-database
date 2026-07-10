@@ -91,14 +91,15 @@ impl Worker {
             loop {
                 // lock is applied in the context of a mutex to return MutexGuard
                 // accesses data anyway if lock is poisoned
-                let unwrapped_data = receiver.lock().unwrap_or_else(|poisoned| {
-                    eprintln!("Warning: Lock is poisoned. Recovering data");
-                    poisoned.into_inner()
-                });
-                
                 // recv blocks (pauses execution of thread)
                 // lock is dropped once recv returns, so other threads can continue
-                let message = unwrapped_data.recv();
+                let message = receiver.lock()
+                    .unwrap_or_else(|poisoned| {
+                        eprintln!("Warning: Lock is poisoned. Recovering data");
+                        poisoned.into_inner()
+                    })
+                    .recv();
+                
                 match message {
                     Ok(job) => {
                         println!("Worker {id} got a job; executing.");
