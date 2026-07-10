@@ -4,9 +4,10 @@ use std::{
 };
 
 // sender is the sending end of mpsc
+// wrapped in Option to facilitate dropping, which closes the channel
 pub struct ThreadPool {
     workers: Vec<Worker>, 
-    sender: mpsc::Sender<Job>
+    sender: Option<mpsc::Sender<Job>>
 }
 
 // Job must be a function, implement Send trait (its ownership can be transferred
@@ -31,7 +32,7 @@ impl ThreadPool {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        ThreadPool { workers, sender }
+        ThreadPool { workers, sender: Some(sender) }
     }
 
     pub fn execute<F>(&self, f: F)
@@ -40,7 +41,21 @@ impl ThreadPool {
     {
         // job needs to be boxed for type safety
         let job = Box::new(f);
-        self.sender.send(job).unwrap();
+        // as_ref borrows inner value of option
+        self.sender.as_ref().unwrap().send(job).unwrap();
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        drop(self.sender.take());
+        
+        // drain used to bypass join's ownership of mutably borrowed
+        // worker by removing worker after
+        for worker in self.workers.drain(..) {
+            println!("Shutting down worker {}", worker.id);
+            worker.thread.join().unwrap();
+        }
     }
 }
 
@@ -57,9 +72,18 @@ impl Worker {
                 // lock is applied in the context of a mutex to return MutexGuard
                 // recv blocks (pauses execution of thread)
                 // lock is dropped once recv returns, so other threads can continue
-                let job = receiver.lock().unwrap().recv().unwrap();
-                println!("Worker {id} got a job; executing.");
-                job();
+                let message = receiver.lock().unwrap().recv();
+
+                match message {
+                    Ok(job) => {
+                        println!("Worker {id} got a job; executing.");
+                        job();
+                    }
+                    Err(_) => { // ThreadPool drop
+                        println!("Worker {id} disconnected; shutting down.");
+                        break;
+                    }
+                }
             }
         });
         

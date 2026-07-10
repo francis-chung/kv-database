@@ -13,7 +13,7 @@ pub fn start_connection() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool = ThreadPool::new(4);
     
-    for stream in listener.incoming() {
+    for stream in listener.incoming().take(2) {
         let stream = stream.unwrap();
 
         // relies on thread pool to opreate any tasks
@@ -21,6 +21,8 @@ pub fn start_connection() {
             handle_connection(stream);
         });
     }
+
+    println!("Shutting down.");
 }
 
 // returns response based on request
