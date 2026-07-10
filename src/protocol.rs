@@ -8,11 +8,14 @@ pub enum Command {
 pub enum ProtocolError {
     Empty, 
     UnknownCommand(String), 
-    WrongArity
+    WrongArity, 
+    InvalidUtf8
 }
 
 // implements basic get / set / del operations
-pub fn parse_command(line: &str) -> Result<Command, ProtocolError> {
+pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
+    let line = str::from_utf8(line_bytes)
+        .map_err(|_| ProtocolError::InvalidUtf8)?;
     let mut words = line.split_whitespace();
     match words.next() {
         None => Err(ProtocolError::Empty), 

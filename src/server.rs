@@ -33,7 +33,7 @@ pub fn start_connection() {
         let stream = match stream {
             Ok(s) => s, 
             Err(e) => {
-                eprintln!("Error in stream (accepted): {e}");
+                eprintln!("Error in stream: {e}");
                 continue;
             }
         };
@@ -52,11 +52,12 @@ fn handle_connection(mut stream: TcpStream, store: Store) {
     // try_clone used for looping while requesting and responding later
     let mut reader = BufReader::new(stream.try_clone().expect("Clone failed"));
     let mut writer = stream;
-    let mut line = String::new();
+    // byte vector allows non-UTF-8 characters, handled later
+    let mut line_bytes = Vec::new();
 
     loop {
-        line.clear();
-        match reader.read_line(&mut line) {
+        line_bytes.clear();
+        match reader.read_until(b'\n', &mut line_bytes) {
             Ok(0) => break, // client closed connection without problems
             Ok(_) => {}
             Err(e) => {
@@ -65,7 +66,8 @@ fn handle_connection(mut stream: TcpStream, store: Store) {
             }
         }
 
-        let result = parse_command(line.trim_end());
+        let trimmed = line_bytes.trim_ascii_end();
+        let result = parse_command(&trimmed);
         let response = match result {
             Ok(cmd) => {
                 dispatch(cmd, &store)
@@ -78,6 +80,9 @@ fn handle_connection(mut stream: TcpStream, store: Store) {
             }
             Err(ProtocolError::WrongArity) => {
                 "ERR wrong number of arguments\n".to_string()
+            }
+            Err(ProtocolError::InvalidUtf8) => {
+                "ERR non-UTF-8 character(s)\n".to_string()
             }
         };
         if let Err(e) = writer.write_all(response.as_bytes()) {
