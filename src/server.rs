@@ -14,6 +14,8 @@ use crate::protocol::{
 
 const ADDRESS: &str = "127.0.0.1:7878";
 
+type Store = Arc<Mutex<HashMapWrapper<String, String>>>;
+
 // begins watching the address and delegating connection handling
 pub fn start_connection() {
     let listener = match TcpListener::bind(ADDRESS) {
@@ -46,11 +48,7 @@ pub fn start_connection() {
 }
 
 // returns response based on request
-fn handle_connection<K, V>(mut stream: TcpStream, store: Arc<Mutex<HashMapWrapper<K, V>>>) 
-where 
-    K: Eq + std::hash::Hash, 
-    V: Clone
-{
+fn handle_connection(mut stream: TcpStream, store: Store) {
     // try_clone used for looping while requesting and responding later
     let mut reader = BufReader::new(stream.try_clone().expect("Clone failed"));
     let mut writer = stream;
@@ -76,10 +74,10 @@ where
                 "ERR empty input\n".to_string()
             }
             Err(ProtocolError::UnknownCommand(cmd)) => {
-                "ERR command {cmd} not recognized\n".to_string()
+                format!("ERR command {cmd} not recognized\n")
             }
             Err(ProtocolError::WrongArity) => {
-                "ERR too many arguments\n".to_string()
+                "ERR wrong number of arguments\n".to_string()
             }
         };
         if let Err(e) = writer.write_all(response.as_bytes()) {
@@ -89,16 +87,12 @@ where
     }
 }
 
-fn dispatch<K, V>(cmd: Command, store: &Arc<Mutex<HashMapWrapper<K, V>>>) -> String 
-where 
-    K: Eq + std::hash::Hash, 
-    V: Clone
-{
+fn dispatch(cmd: Command, store: &Store) -> String {
     match cmd {
         Command::Get { key } => {
             let map = store.lock().unwrap();
             match map.get(&key) {
-                Some(value) => format!("VALUE {}\n", value.to_string()), 
+                Some(value) => format!("VALUE {value}\n"), 
                 None => "NIL\n".to_string()
             }
         }

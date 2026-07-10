@@ -4,6 +4,7 @@ pub enum Command {
     Del { key: String }
 }
 
+#[derive(Debug)]
 pub enum ProtocolError {
     Empty, 
     UnknownCommand(String), 
