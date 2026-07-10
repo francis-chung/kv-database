@@ -42,7 +42,16 @@ impl ThreadPool {
         // job needs to be boxed for type safety
         let job = Box::new(f);
         // as_ref borrows inner value of option
-        self.sender.as_ref().unwrap().send(job).unwrap();
+        if let Some(current_sender) = &self.sender.as_ref() {
+            match current_sender.send(job) {
+                Ok(()) => {}
+                Err(e) => {
+                    eprintln!("Sending error: {e}");
+                }
+            }
+        } else {
+            eprintln!("Sender is None: channel disconnected or uninitialized.");
+        }
     }
 }
 
@@ -54,7 +63,18 @@ impl Drop for ThreadPool {
         // worker by removing worker after
         for worker in self.workers.drain(..) {
             println!("Shutting down worker {}", worker.id);
-            worker.thread.join().unwrap();
+            match worker.thread.join() {
+                Ok(_) => {}
+                Err(e) => {
+                    if let Some(msg) = e.downcast_ref::<&str>() {
+                        eprintln!("Thread failed with &str: {msg}");
+                    } else if let Some(msg) = e.downcast_ref::<String>() {
+                        eprintln!("Thread failed with String: {msg}");
+                    } else {
+                        eprintln!("Thread failed with an unknown panic payload");
+                    }
+                }
+            }
         }
     }
 }
@@ -70,10 +90,15 @@ impl Worker {
         let thread = thread::spawn(move || {
             loop {
                 // lock is applied in the context of a mutex to return MutexGuard
+                // accesses data anyway if lock is poisoned
+                let unwrapped_data = receiver.lock().unwrap_or_else(|poisoned| {
+                    eprintln!("Warning: Lock is poisoned. Recovering data");
+                    poisoned.into_inner()
+                });
+                
                 // recv blocks (pauses execution of thread)
                 // lock is dropped once recv returns, so other threads can continue
-                let message = receiver.lock().unwrap().recv();
-
+                let message = unwrapped_data.recv();
                 match message {
                     Ok(job) => {
                         println!("Worker {id} got a job; executing.");
