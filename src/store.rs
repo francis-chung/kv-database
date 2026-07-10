@@ -9,7 +9,8 @@ pub struct HashMapWrapper<K, V> {
 
 impl<K, V> HashMapWrapper<K, V> 
 where 
-    K: Eq + std::hash::Hash
+    K: Eq + std::hash::Hash, 
+    V: Clone
 {
     pub fn new() -> Self {
         Self { 
@@ -110,7 +111,8 @@ where
 
 impl <K, V> Default for HashMapWrapper<K, V>
 where 
-    K: Eq + std::hash::Hash
+    K: Eq + std::hash::Hash, 
+    V: Clone
 {
     fn default() -> Self { Self::new() }
 }

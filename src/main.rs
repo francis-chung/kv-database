@@ -1,7 +1,6 @@
 mod store;
 mod server;
-
-use store::HashMapWrapper;
+mod protocol;
 
 fn main() {
     server::start_connection();
