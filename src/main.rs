@@ -5,5 +5,5 @@ use store::HashMapWrapper;
 
 fn main() {
     server::start_connection();
-    let map = HashMapWrapper::<String, String>::new();
+    // let map = HashMapWrapper::<String, String>::new();
 }
