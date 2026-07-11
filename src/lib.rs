@@ -1,13 +1,13 @@
 use std::{
-    sync::{Arc, Mutex, mpsc}, 
-    thread
+    sync::{Arc, Mutex, mpsc},
+    thread,
 };
 
 // sender is the sending end of mpsc
 // wrapped in Option to facilitate dropping, which closes the channel
 pub struct ThreadPool {
-    workers: Vec<Worker>, 
-    sender: Option<mpsc::Sender<Job>>
+    workers: Vec<Worker>,
+    sender: Option<mpsc::Sender<Job>>,
 }
 
 // Job must be a function, implement Send trait (its ownership can be transferred
@@ -32,12 +32,15 @@ impl ThreadPool {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        ThreadPool { workers, sender: Some(sender) }
+        ThreadPool {
+            workers,
+            sender: Some(sender),
+        }
     }
 
     pub fn execute<F>(&self, f: F)
-    where 
-        F: FnOnce() + Send + 'static
+    where
+        F: FnOnce() + Send + 'static,
     {
         // job needs to be boxed for type safety
         let job = Box::new(f);
@@ -58,7 +61,7 @@ impl ThreadPool {
 impl Drop for ThreadPool {
     fn drop(&mut self) {
         drop(self.sender.take());
-        
+
         // drain used to bypass join's ownership of mutably borrowed
         // worker by removing worker after
         for worker in self.workers.drain(..) {
@@ -80,8 +83,8 @@ impl Drop for ThreadPool {
 }
 
 struct Worker {
-    id: usize, 
-    thread: thread::JoinHandle<()>
+    id: usize,
+    thread: thread::JoinHandle<()>,
 }
 
 // worker function contains receiving end of mpsc
@@ -93,26 +96,28 @@ impl Worker {
                 // accesses data anyway if lock is poisoned
                 // recv blocks (pauses execution of thread)
                 // lock is dropped once recv returns, so other threads can continue
-                let message = receiver.lock()
+                let message = receiver
+                    .lock()
                     .unwrap_or_else(|poisoned| {
                         eprintln!("Warning: Lock is poisoned. Recovering data");
                         poisoned.into_inner()
                     })
                     .recv();
-                
+
                 match message {
                     Ok(job) => {
                         println!("Worker {id} got a job; executing.");
                         job();
                     }
-                    Err(_) => { // ThreadPool drop
+                    Err(_) => {
+                        // ThreadPool drop
                         println!("Worker {id} disconnected; shutting down.");
                         break;
                     }
                 }
             }
         });
-        
+
         Worker { id, thread }
     }
 }

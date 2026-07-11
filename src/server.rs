@@ -50,7 +50,11 @@ pub fn start_connection() {
 // returns response based on request
 fn handle_connection(mut stream: TcpStream, store: Store) {
     // try_clone used for looping while requesting and responding later
-    let mut reader = BufReader::new(stream.try_clone().expect("Clone failed"));
+    let mut reader = BufReader::new(
+        stream
+            .try_clone()
+            .unwrap_or_else(|e| panic!("Failed to clone TCP stream for connection handling: {e}")),
+    );
     let mut writer = stream;
     // byte vector allows non-UTF-8 characters, handled later
     let mut line_bytes = Vec::new();

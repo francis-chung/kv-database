@@ -1,41 +1,47 @@
 pub enum Command {
-    Get { key: String }, 
-    Set { key: String, value: String }, 
-    Del { key: String }
+    Get { key: String },
+    Set { key: String, value: String },
+    Del { key: String },
 }
 
 #[derive(Debug)]
 pub enum ProtocolError {
-    Empty, 
-    UnknownCommand(String), 
-    WrongArity, 
-    InvalidUtf8
+    Empty,
+    UnknownCommand(String),
+    WrongArity,
+    InvalidUtf8,
 }
 
 // implements basic get / set / del operations
 pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
-    let line = str::from_utf8(line_bytes)
-        .map_err(|_| ProtocolError::InvalidUtf8)?;
+    let line = str::from_utf8(line_bytes).map_err(|_| ProtocolError::InvalidUtf8)?;
     let mut words = line.split_whitespace();
     match words.next() {
-        None => Err(ProtocolError::Empty), 
+        None => Err(ProtocolError::Empty),
         Some(cmd) => match cmd.to_ascii_uppercase().as_str() {
-            "GET" => { 
-                // ok_or converts an Option into a Result, which returns 
+            "GET" => {
+                // ok_or converts an Option into a Result, which returns
                 // early if an error occurred
                 let key = words.next().ok_or(ProtocolError::WrongArity)?;
-                Ok(Command::Get { key: key.to_string() })
+                Ok(Command::Get {
+                    key: key.to_string(),
+                })
             }
             "SET" => {
                 let key = words.next().ok_or(ProtocolError::WrongArity)?;
                 let value = words.next().ok_or(ProtocolError::WrongArity)?;
-                Ok(Command::Set { key: key.to_string(), value: value.to_string() })
+                Ok(Command::Set {
+                    key: key.to_string(),
+                    value: value.to_string(),
+                })
             }
             "DEL" => {
                 let key = words.next().ok_or(ProtocolError::WrongArity)?;
-                Ok(Command::Del { key: key.to_string() })
+                Ok(Command::Del {
+                    key: key.to_string(),
+                })
             }
-            other => Err(ProtocolError::UnknownCommand(other.to_string()))
-        }
+            other => Err(ProtocolError::UnknownCommand(other.to_string())),
+        },
     }
 }

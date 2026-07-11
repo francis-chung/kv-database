@@ -2,29 +2,29 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct HashMapWrapper<K, V> {
-    map: HashMap<K, V>, 
-    hits: AtomicUsize, 
-    misses: AtomicUsize
+    map: HashMap<K, V>,
+    hits: AtomicUsize,
+    misses: AtomicUsize,
 }
 
-impl<K, V> HashMapWrapper<K, V> 
-where 
-    K: Eq + std::hash::Hash, 
-    V: Clone
+impl<K, V> HashMapWrapper<K, V>
+where
+    K: Eq + std::hash::Hash,
+    V: Clone,
 {
     pub fn new() -> Self {
-        Self { 
-            map: HashMap::new(), 
-            hits: AtomicUsize::new(0), 
-            misses: AtomicUsize::new(0)
+        Self {
+            map: HashMap::new(),
+            hits: AtomicUsize::new(0),
+            misses: AtomicUsize::new(0),
         }
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            map: HashMap::with_capacity(capacity), 
-            hits: AtomicUsize::new(0), 
-            misses: AtomicUsize::new(0)
+            map: HashMap::with_capacity(capacity),
+            hits: AtomicUsize::new(0),
+            misses: AtomicUsize::new(0),
         }
     }
 
@@ -50,9 +50,7 @@ where
     }
 
     pub fn get_multiple(&self, keys: &[K]) -> Vec<Option<&V>> {
-        keys.iter()
-            .map(|key| self.get(key))
-            .collect()
+        keys.iter().map(|key| self.get(key)).collect()
     }
 
     pub fn contains_key(&self, key: &K) -> bool {
@@ -64,7 +62,7 @@ where
             false => {
                 self.misses.fetch_add(1, Ordering::Relaxed);
                 false
-            }            
+            }
         }
     }
 
@@ -78,7 +76,9 @@ where
 
     // FnOnce: a function executed exactly once in this update function
     pub fn update<F>(&mut self, key: &K, f: F) -> bool
-    where F: FnOnce(&mut V) {
+    where
+        F: FnOnce(&mut V),
+    {
         if let Some(value) = self.map.get_mut(key) {
             self.hits.fetch_add(1, Ordering::Relaxed);
             f(value);
@@ -98,7 +98,7 @@ where
     }
 
     // impl... return type shows characteristics of type without
-    // defining exactly what it is (especially when true 
+    // defining exactly what it is (especially when true
     // type signature is verbose)
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.map.keys()
@@ -109,10 +109,12 @@ where
     }
 }
 
-impl <K, V> Default for HashMapWrapper<K, V>
-where 
-    K: Eq + std::hash::Hash, 
-    V: Clone
+impl<K, V> Default for HashMapWrapper<K, V>
+where
+    K: Eq + std::hash::Hash,
+    V: Clone,
 {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
