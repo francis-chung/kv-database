@@ -2,6 +2,9 @@ pub enum Command {
     Get { key: String },
     Set { key: String, value: String },
     Del { key: String },
+    Exists { key: String }, 
+    DbSize, 
+    Clear
 }
 
 #[derive(Debug)]
@@ -23,6 +26,9 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
                 // ok_or converts an Option into a Result, which returns
                 // early if an error occurred
                 let key = words.next().ok_or(ProtocolError::WrongArity)?;
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
                 Ok(Command::Get {
                     key: key.to_string(),
                 })
@@ -30,6 +36,9 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
             "SET" => {
                 let key = words.next().ok_or(ProtocolError::WrongArity)?;
                 let value = words.next().ok_or(ProtocolError::WrongArity)?;
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
                 Ok(Command::Set {
                     key: key.to_string(),
                     value: value.to_string(),
@@ -37,9 +46,33 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
             }
             "DEL" => {
                 let key = words.next().ok_or(ProtocolError::WrongArity)?;
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
                 Ok(Command::Del {
                     key: key.to_string(),
                 })
+            }
+            "EXISTS" => {
+                let key = words.next().ok_or(ProtocolError::WrongArity)?;
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
+                Ok(Command::Exists { 
+                    key: key.to_string()
+                })
+            }
+            "DBSIZE" => {
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
+                Ok(Command::DbSize)
+            }
+            "CLEAR" => {
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
+                Ok(Command::Clear)
             }
             other => Err(ProtocolError::UnknownCommand(other.to_string())),
         },

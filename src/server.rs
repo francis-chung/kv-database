@@ -113,5 +113,20 @@ fn dispatch(cmd: Command, store: &Store) -> String {
             store.lock().unwrap().remove(&key);
             "OK\n".to_string()
         }
+        Command::Exists { key } => {
+            let map = store.lock().unwrap();
+            match map.contains_key(&key) {
+                true => "1\n".to_string(), 
+                false => "0\n".to_string()
+            }
+        }
+        Command::DbSize => {
+            let result = store.lock().unwrap().len();
+            format!("{result}\n")
+        }
+        Command::Clear => {
+            store.lock().unwrap().clear();
+            "OK\n".to_string()
+        }
     }
 }
