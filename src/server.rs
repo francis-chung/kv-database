@@ -1,7 +1,10 @@
 use std::{
     sync::{Arc, Mutex},
-    io::{BufReader, prelude::*}, 
-    net::{TcpListener, TcpStream}
+    error::Error
+};
+use tokio::{
+    net::{TcpListener, TcpStream}, 
+    io::{AsyncBufReadExt, BufReader, AsyncWriteExt}
 };
 
 use kv_database::ThreadPool;
@@ -17,51 +20,50 @@ const ADDRESS: &str = "127.0.0.1:7878";
 type Store = Arc<Mutex<HashMapWrapper<String, String>>>;
 
 // begins watching the address and delegating connection handling
-pub fn start_connection(threads: usize) {
-    let listener = match TcpListener::bind(ADDRESS) {
+#[tokio::main]
+pub async fn start_connection(threads: usize) {
+    let listener = match TcpListener::bind(ADDRESS).await {
         Ok(sock) => sock, 
         Err(e) => {
             eprintln!("Could not bind to {ADDRESS}: {e}");
             return;
         }
     };
+    
     let pool = ThreadPool::new(threads);
-
     let store = Arc::new(Mutex::new(HashMapWrapper::<String, String>::new()));
     
-    for stream in listener.incoming() {
-        let stream = match stream {
-            Ok(s) => s, 
+    loop {
+        let (stream, _) = match listener.accept().await {
+            Ok(s) => s,
             Err(e) => {
                 eprintln!("Error in stream: {e}");
                 continue;
             }
         };
-        
+
         let store = Arc::clone(&store);
-        pool.execute(|| {
-            handle_connection(stream, store);
+        let _ = tokio::spawn(async move {
+            if let Err(e) = handle_connection(stream, store).await {
+                eprintln!("Failed to handle connection: {e}");
+            }
         });
     }
-
-    println!("Shutting down.");
 }
 
 // returns response based on request
-fn handle_connection(mut stream: TcpStream, store: Store) {
-    // try_clone used for looping while requesting and responding later
-    let mut reader = BufReader::new(
-        stream
-            .try_clone()
-            .unwrap_or_else(|e| panic!("Failed to clone TCP stream for connection handling: {e}")),
-    );
-    let mut writer = stream;
+async fn handle_connection(mut stream: TcpStream, store: Store) -> Result<(), Box<dyn Error>> {
+    // into_split used for looping while requesting and responding later
+    // into_split consumes stream and uses Arc-like architecture
+    let (reader, mut writer) = stream.into_split();
+    // enables async buffering 
+    let mut buf_reader = BufReader::new(reader);
     // byte vector allows non-UTF-8 characters, handled later
     let mut line_bytes = Vec::new();
 
     loop {
         line_bytes.clear();
-        match reader.read_until(b'\n', &mut line_bytes) {
+        match buf_reader.read_until(b'\n', &mut line_bytes).await {
             Ok(0) => break, // client closed connection without problems
             Ok(_) => {}
             Err(e) => {
@@ -89,11 +91,12 @@ fn handle_connection(mut stream: TcpStream, store: Store) {
                 "ERR non-UTF-8 character(s)\n".to_string()
             }
         };
-        if let Err(e) = writer.write_all(response.as_bytes()) {
+        if let Err(e) = writer.write_all(response.as_bytes()).await {
             eprintln!("Write error: {e}");
             break;
         }
     }
+    Ok(())
 }
 
 fn dispatch(cmd: Command, store: &Store) -> String {
