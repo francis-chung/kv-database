@@ -7,7 +7,6 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader, AsyncWriteExt}
 };
 
-use kv_database::ThreadPool;
 use crate::store::HashMapWrapper;
 use crate::protocol::{
     parse_command, 
@@ -21,7 +20,7 @@ type Store = Arc<Mutex<HashMapWrapper<String, String>>>;
 
 // begins watching the address and delegating connection handling
 #[tokio::main]
-pub async fn start_connection(threads: usize) {
+pub async fn start_connection() {
     let listener = match TcpListener::bind(ADDRESS).await {
         Ok(sock) => sock, 
         Err(e) => {
@@ -30,7 +29,6 @@ pub async fn start_connection(threads: usize) {
         }
     };
     
-    let pool = ThreadPool::new(threads);
     let store = Arc::new(Mutex::new(HashMapWrapper::<String, String>::new()));
     
     loop {
