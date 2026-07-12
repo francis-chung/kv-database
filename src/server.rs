@@ -17,7 +17,7 @@ const ADDRESS: &str = "127.0.0.1:7878";
 type Store = Arc<Mutex<HashMapWrapper<String, String>>>;
 
 // begins watching the address and delegating connection handling
-pub fn start_connection() {
+pub fn start_connection(threads: usize) {
     let listener = match TcpListener::bind(ADDRESS) {
         Ok(sock) => sock, 
         Err(e) => {
@@ -25,7 +25,7 @@ pub fn start_connection() {
             return;
         }
     };
-    let pool = ThreadPool::new(4);
+    let pool = ThreadPool::new(threads);
 
     let store = Arc::new(Mutex::new(HashMapWrapper::<String, String>::new()));
     

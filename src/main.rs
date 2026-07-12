@@ -3,5 +3,5 @@ mod server;
 mod store;
 
 fn main() {
-    server::start_connection();
+    server::start_connection(100);
 }

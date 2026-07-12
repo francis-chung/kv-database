@@ -3,6 +3,10 @@ use std::{
     thread,
 };
 
+// exposes these crates to external crates
+pub mod store;
+pub mod protocol;
+
 // sender is the sending end of mpsc
 // wrapped in Option to facilitate dropping, which closes the channel
 pub struct ThreadPool {
