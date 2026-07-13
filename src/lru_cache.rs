@@ -6,6 +6,7 @@ pub struct LRUCache {
     arena: Vec<Node>,
     key_to_pos: HashMap<i32, usize>, 
     cache: HashMap<i32, i32>,
+    free_indices: Vec<usize>, 
     head: usize,
     tail: usize,
     capacity: usize
@@ -14,6 +15,8 @@ pub struct LRUCache {
 
 impl LRUCache {
     fn new(cap: usize) -> Self {
+        assert(cap > 0);
+        
         let mut h = Node::new(-1, -1, 0);
         let mut t = Node::new(-1, -1, 1);
         h.next = Some(1);
@@ -26,6 +29,7 @@ impl LRUCache {
             arena, 
             key_to_pos: HashMap::new(), 
             cache: HashMap::new(), 
+            free_indices: Vec::new(),
             head: 0, 
             tail: 1, 
             capacity: cap
@@ -74,16 +78,29 @@ impl LRUCache {
             None => {
                 if self.cache.len() == self.capacity {
                     let last_node = self.arena[self.tail].prev.unwrap();
-                    self.cache.remove(&self.arena[last_node].key);
-                    self.key_to_pos.remove(&self.arena[last_node].key);
+                    let last_key = self.arena[last_node].key;
+                    self.free_indices.push(self.key_to_pos[&last_key]);
+                    self.cache.remove(&last_key);
+                    self.key_to_pos.remove(&last_key);
                     self.removeNode(last_node);
                 }
-                let pos = self.arena.len();
-                let cur = Node::new(key, value, pos);
-                self.arena.push(cur);
+                match self.free_indices.len() {
+                    x if x == 0 => {
+                        let pos = self.arena.len();
+                        let cur = Node::new(key, value, pos);
+                        self.arena.push(cur);
+                        self.key_to_pos.insert(key, pos);
+                        self.addNode(pos);
+                    }
+                    _bytes_read => {
+                        let pos = self.free_indices.pop().unwrap();
+                        let cur = Node::new(key, value, pos);
+                        self.arena[pos] = cur;
+                        self.key_to_pos.insert(key, pos);
+                        self.addNode(pos);
+                    }
+                }
                 self.cache.insert(key, value);
-                self.key_to_pos.insert(key, pos);
-                self.addNode(pos);
             }
         }
     }
