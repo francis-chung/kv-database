@@ -10,7 +10,7 @@ use tokio::{
 const ADDRESS: &str = "127.0.0.1:7878";
 const THREADS: usize = 1000;
 const REQUESTS: usize = 100;
-const REQUEST_TYPE: &str = "GET";
+const REQUEST_TYPE: &str = "GET/SET";
 
 #[tokio::main]
 async fn main() {
@@ -42,7 +42,7 @@ async fn main() {
     let elapsed = start.elapsed();
     let total_requests = THREADS * REQUESTS;
     let ops_per_sec = total_requests as f64 / elapsed.as_secs_f64();
-    print!("total requests: {total_requests} in {elapsed:?} ({ops_per_sec:.4} ops/sec)");
+    println!("total requests: {total_requests} in {elapsed:?} ({ops_per_sec:.4} ops/sec)");
 }
 
 fn request_string(format: &str, num: usize, total: &usize) -> String {

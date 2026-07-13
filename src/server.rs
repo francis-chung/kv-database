@@ -69,7 +69,6 @@ async fn handle_connection(mut stream: TcpStream, store: Store) -> Result<(), Bo
                 break;
             }
         }
-
         let trimmed = line_bytes.trim_ascii_end();
         let result = parse_command(&trimmed);
         let response = match result {
