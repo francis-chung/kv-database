@@ -92,7 +92,7 @@ impl LRUCache {
                         self.key_to_pos.insert(key, pos);
                         self.addNode(pos);
                     }
-                    _bytes_read => {
+                    _ => {
                         let pos = self.free_indices.pop().unwrap();
                         let cur = Node::new(key, value, pos);
                         self.arena[pos] = cur;
