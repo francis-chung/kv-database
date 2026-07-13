@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 type Link = Option<usize>;
 
-pub struct LRUCache {
-    arena: Vec<Node>,
-    key_to_pos: HashMap<i32, usize>, 
-    cache: HashMap<i32, i32>,
+pub struct LRUCache<K, V> {
+    arena: Vec<Node<K, V>>,
+    key_to_pos: HashMap<K, usize>, 
+    cache: HashMap<K, V>,
     free_indices: Vec<usize>, 
     head: usize,
     tail: usize,
@@ -13,15 +13,19 @@ pub struct LRUCache {
 }
 
 
-impl LRUCache {
+impl<K, V> LRUCache<K, V> 
+where 
+    K: Eq + std::hash::Hash + Clone, 
+    V: Clone, 
+{
     fn new(cap: usize) -> Self {
-        assert(cap > 0);
+        assert!(cap > 0);
         
-        let mut h = Node::new(-1, -1, 0);
-        let mut t = Node::new(-1, -1, 1);
+        let mut h = Node::new(None, None, 0);
+        let mut t = Node::new(None, None, 1);
         h.next = Some(1);
         t.prev = Some(0);
-        let mut arena = Vec::<Node>::new();
+        let mut arena = Vec::<Node<K, V>>::new();
         arena.push(h);
         arena.push(t);
 
@@ -56,29 +60,30 @@ impl LRUCache {
         self.addNode(cur);
     }
     
-    fn get(&mut self, key: i32) -> i32 {
+    fn get(&mut self, key: K) -> Option<V> {
         match self.cache.get(&key) {
-            Some(&value) => {
+            Some(value) => {
+                let value = value.clone();
                 let pos = self.key_to_pos[&key];
                 self.moveToHead(pos);
-                value
+                Some(value)
             }
-            None => -1
+            None => None
         }
     }
     
-    fn put(&mut self, key: i32, value: i32) {
+    fn put(&mut self, key: K, value: V) {
         match self.cache.get(&key) {
             Some(_) => {
                 let p = self.key_to_pos[&key];
-                self.arena[p].val = value;
+                self.arena[p].val = Some(value.clone());
                 self.cache.insert(key, value);
                 self.moveToHead(p);
             }
             None => {
                 if self.cache.len() == self.capacity {
                     let last_node = self.arena[self.tail].prev.unwrap();
-                    let last_key = self.arena[last_node].key;
+                    let last_key = self.arena[last_node].key.clone().unwrap();
                     self.free_indices.push(self.key_to_pos[&last_key]);
                     self.cache.remove(&last_key);
                     self.key_to_pos.remove(&last_key);
@@ -87,16 +92,16 @@ impl LRUCache {
                 match self.free_indices.len() {
                     x if x == 0 => {
                         let pos = self.arena.len();
-                        let cur = Node::new(key, value, pos);
+                        let cur = Node::new(Some(key.clone()), Some(value.clone()), pos);
                         self.arena.push(cur);
-                        self.key_to_pos.insert(key, pos);
+                        self.key_to_pos.insert(key.clone(), pos);
                         self.addNode(pos);
                     }
                     _ => {
                         let pos = self.free_indices.pop().unwrap();
-                        let cur = Node::new(key, value, pos);
+                        let cur = Node::new(Some(key.clone()), Some(value.clone()), pos);
                         self.arena[pos] = cur;
-                        self.key_to_pos.insert(key, pos);
+                        self.key_to_pos.insert(key.clone(), pos);
                         self.addNode(pos);
                     }
                 }
@@ -106,16 +111,20 @@ impl LRUCache {
     }
 }
 
-struct Node {
-    key: i32, 
-    val: i32, 
+struct Node<K, V> {
+    key: Option<K>, 
+    val: Option<V>, 
     pos: usize, 
     prev: Link, 
     next: Link
 }
 
-impl Node {
-    pub fn new(k: i32, v: i32, p: usize) -> Self {
+impl<K, V> Node<K, V>
+where 
+    K: Eq + std::hash::Hash + Clone, 
+    V: Clone,
+{
+    pub fn new(k: Option<K>, v: Option<V>, p: usize) -> Self {
         Node {
             key: k, 
             val: v, 

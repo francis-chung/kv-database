@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::lru_cache::LRUCache;
+
 pub struct HashMapWrapper<K, V> {
     map: HashMap<K, V>,
     hits: AtomicUsize,

@@ -6,6 +6,7 @@ use std::{
 // exposes these crates to external crates
 pub mod store;
 pub mod protocol;
+pub mod lru_cache;
 
 // sender is the sending end of mpsc
 // wrapped in Option to facilitate dropping, which closes the channel
