@@ -99,7 +99,7 @@ async fn handle_connection(mut stream: TcpStream, store: Store) -> Result<(), Bo
 fn dispatch(cmd: Command, store: &Store) -> String {
     match cmd {
         Command::Get { key } => {
-            let map = store.lock().unwrap();
+            let mut map = store.lock().unwrap();
             match map.get(&key) {
                 Some(value) => format!("VALUE {value}\n"), 
                 None => "NIL\n".to_string()
@@ -114,7 +114,7 @@ fn dispatch(cmd: Command, store: &Store) -> String {
             "OK\n".to_string()
         }
         Command::Exists { key } => {
-            let map = store.lock().unwrap();
+            let mut map = store.lock().unwrap();
             match map.contains_key(&key) {
                 true => "1\n".to_string(), 
                 false => "0\n".to_string()
