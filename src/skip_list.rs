@@ -16,6 +16,8 @@ where
     V: Ord + Clone
 {
     pub fn new(max_level: usize) -> Self {
+        assert!(max_level > 0);
+        
         SkipList {
             nodes: Vec::new(), 
             head: Vec::new(), 
@@ -54,17 +56,12 @@ where
             self.head.push(None);
             to_update[self.level] = None;
         }
-        let pos = match self.free_list.len() {
-            x if x == 0 => {
-                let result = self.nodes.len();
-                self.nodes.push(Node::new(key.clone(), value, self.max_level));
-                result
-            }
-            _ => {
-                let result = self.free_list.pop().unwrap();
-                self.nodes[result] = Node::new(key.clone(), value, self.max_level);
-                result
-            }
+        let pos = if let Some(result) = self.free_list.pop() {
+            self.nodes[result] = Node::new(key.clone(), value, new_level + 1);
+            result
+        } else {
+            self.nodes.push(Node::new(key.clone(), value, new_level + 1));
+            self.nodes.len() - 1
         };
         self.key_to_pos.insert(key, pos);
         for i in 0..=new_level {
@@ -94,11 +91,11 @@ where
     K: Ord + std::hash::Hash + Clone,
     V: Ord + Clone
 {
-    fn new(key: K, score: V, max_level: usize) -> Self {
+    fn new(key: K, score: V, height: usize) -> Self {
         Node {
             key, 
             score, 
-            forward: vec![None; max_level]
+            forward: vec![None; height]
         }
     }
 }
