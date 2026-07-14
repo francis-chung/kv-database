@@ -32,23 +32,18 @@ where
     }
 
     pub fn insert(&mut self, key: K, value: V) {
-        let mut to_update: Vec<usize> = vec![0; self.max_level];
-        let mut t: bool = true;
-        let mut index: usize = 0;
+        let mut to_update: Vec<Option<usize>> = vec![None; self.max_level];
+        let mut index: Option<usize> = None;
         for i in (0..=self.level).rev() {
-            let mut next = match t {
-                true => self.head[i],
-                false => self.nodes[index].forward[i]
+            let mut next = match index {
+                Some(index) => self.nodes[index].forward[i], 
+                None => self.head[i]
             };
-            while let Some(next_val) = next && self.nodes[next_val].score > value {
-                t = false;
-                index = next_val;
-                next = self.nodes[index].forward[i];
+            while let Some(next_val) = next && self.nodes[next_val].score < value {
+                index = Some(next_val);
+                next = self.nodes[next_val].forward[i];
             }
-            to_update[i] = match t {
-                true => usize::MAX, 
-                false => index
-            };
+            to_update[i] = index;
         }
         let mut new_level: usize = 0;
         while rand::random() && new_level < self.max_level - 1 {
@@ -57,30 +52,30 @@ where
         while self.level < new_level {
             self.level += 1;
             self.head.push(None);
-            to_update[self.level] = usize::MAX;
+            to_update[self.level] = None;
         }
         let pos = match self.free_list.len() {
             x if x == 0 => {
                 let result = self.nodes.len();
-                self.nodes.push(Node::new(key, value, self.max_level));
+                self.nodes.push(Node::new(key.clone(), value, self.max_level));
                 result
             }
             _ => {
                 let result = self.free_list.pop().unwrap();
-                self.nodes[result] = Node::new(key, value, self.max_level);
+                self.nodes[result] = Node::new(key.clone(), value, self.max_level);
                 result
             }
         };
-        for i in (0..=new_level) {
-            let current = to_update[i];
-            match current {
-                usize::MAX => {
-                    self.nodes[pos].forward[i] = self.head[i];
-                    self.head[i] = Some(pos);
-                }
-                prev_index => {
+        self.key_to_pos.insert(key, pos);
+        for i in 0..=new_level {
+            match to_update[i] {
+                Some(prev_index) => {
                     self.nodes[pos].forward[i] = self.nodes[prev_index].forward[i];
                     self.nodes[prev_index].forward[i] = Some(pos);
+                }
+                None => {
+                    self.nodes[pos].forward[i] = self.head[i];
+                    self.head[i] = Some(pos);
                 }
             }
         }
