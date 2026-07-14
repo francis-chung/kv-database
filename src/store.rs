@@ -94,10 +94,10 @@ where
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        let result = self.map.insert(key.clone(), value.clone());
         let mut cache = self.cache.lock().unwrap();
-        cache.put(key, value);
-        result
+        cache.put(key.clone(), value.clone());
+        drop(cache);
+        self.map.insert(key, value)
     }
 
     pub fn insert_multiple(&mut self, pairs: Vec<(K, V)>) {
