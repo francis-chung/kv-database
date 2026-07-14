@@ -18,7 +18,7 @@ where
     K: Eq + std::hash::Hash + Clone, 
     V: Clone, 
 {
-    fn new(cap: usize) -> Self {
+    pub fn new(cap: usize) -> Self {
         assert!(cap > 0);
         
         let mut h = Node::new(None, None, 0);
@@ -60,8 +60,8 @@ where
         self.addNode(cur);
     }
     
-    fn get(&mut self, key: K) -> Option<V> {
-        match self.cache.get(&key) {
+    pub fn get(&mut self, key: &K) -> Option<V> {
+        match self.cache.get(key) {
             Some(value) => {
                 let value = value.clone();
                 let pos = self.key_to_pos[&key];
@@ -72,7 +72,7 @@ where
         }
     }
     
-    fn put(&mut self, key: K, value: V) {
+    pub fn put(&mut self, key: K, value: V) {
         match self.cache.get(&key) {
             Some(_) => {
                 let p = self.key_to_pos[&key];
