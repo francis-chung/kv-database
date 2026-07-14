@@ -40,7 +40,7 @@ where
         }
     }
 
-    fn addNode(&mut self, cur: usize) {
+    fn add_node(&mut self, cur: usize) {
         let temp = self.arena[self.head].next.unwrap();
         self.arena[cur].prev = Some(self.head);
         self.arena[cur].next = Some(temp);
@@ -48,16 +48,16 @@ where
         self.arena[temp].prev = Some(cur);
     }
 
-    fn removeNode(&mut self, cur: usize) {
+    fn remove_node(&mut self, cur: usize) {
         let org_prev = self.arena[cur].prev.unwrap();
         let org_next = self.arena[cur].next.unwrap();
         self.arena[org_prev].next = Some(org_next);
         self.arena[org_next].prev = Some(org_prev);
     }
 
-    fn moveToHead(&mut self, cur: usize) {
-        self.removeNode(cur);
-        self.addNode(cur);
+    fn move_to_head(&mut self, cur: usize) {
+        self.remove_node(cur);
+        self.add_node(cur);
     }
     
     pub fn get(&mut self, key: &K) -> Option<V> {
@@ -65,7 +65,7 @@ where
             Some(value) => {
                 let value = value.clone();
                 let pos = self.key_to_pos[&key];
-                self.moveToHead(pos);
+                self.move_to_head(pos);
                 Some(value)
             }
             None => None
@@ -78,7 +78,7 @@ where
                 let p = self.key_to_pos[&key];
                 self.arena[p].val = Some(value.clone());
                 self.cache.insert(key, value);
-                self.moveToHead(p);
+                self.move_to_head(p);
             }
             None => {
                 if self.cache.len() == self.capacity {
@@ -87,7 +87,7 @@ where
                     self.free_indices.push(self.key_to_pos[&last_key]);
                     self.cache.remove(&last_key);
                     self.key_to_pos.remove(&last_key);
-                    self.removeNode(last_node);
+                    self.remove_node(last_node);
                 }
                 match self.free_indices.len() {
                     x if x == 0 => {
@@ -95,14 +95,14 @@ where
                         let cur = Node::new(Some(key.clone()), Some(value.clone()), pos);
                         self.arena.push(cur);
                         self.key_to_pos.insert(key.clone(), pos);
-                        self.addNode(pos);
+                        self.add_node(pos);
                     }
                     _ => {
                         let pos = self.free_indices.pop().unwrap();
                         let cur = Node::new(Some(key.clone()), Some(value.clone()), pos);
                         self.arena[pos] = cur;
                         self.key_to_pos.insert(key.clone(), pos);
-                        self.addNode(pos);
+                        self.add_node(pos);
                     }
                 }
                 self.cache.insert(key, value);
@@ -114,7 +114,7 @@ where
         if let Some(pos) = self.key_to_pos.remove(key) {
             self.free_indices.push(pos);
             self.cache.remove(key);
-            self.removeNode(pos);
+            self.remove_node(pos);
         }
     }
 }
