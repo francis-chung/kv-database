@@ -109,6 +109,14 @@ where
             }
         }
     }
+
+    pub fn del(&mut self, key: &K) {
+        if let Some(pos) = self.key_to_pos.remove(key) {
+            self.free_indices.push(pos);
+            self.cache.remove(key);
+            self.removeNode(pos);
+        }
+    }
 }
 
 struct Node<K, V> {

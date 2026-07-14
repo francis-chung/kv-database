@@ -120,6 +120,9 @@ where
     }
 
     pub fn remove(&mut self, key: &K) -> Option<V> {
+        let mut cache = self.cache.lock().unwrap();
+        cache.del(key);
+        drop(cache);
         self.map.remove(key)
     }
 
