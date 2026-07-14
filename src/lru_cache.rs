@@ -131,7 +131,7 @@ where
     K: Eq + std::hash::Hash + Clone, 
     V: Clone,
 {
-    pub fn new(k: Option<K>, v: Option<V>) -> Self {
+    fn new(k: Option<K>, v: Option<V>) -> Self {
         Node {
             key: k, 
             val: v, 
