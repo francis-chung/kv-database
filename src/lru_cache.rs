@@ -21,8 +21,8 @@ where
     pub fn new(cap: usize) -> Self {
         assert!(cap > 0);
         
-        let mut h = Node::new(None, None, 0);
-        let mut t = Node::new(None, None, 1);
+        let mut h = Node::new(None, None);
+        let mut t = Node::new(None, None);
         h.next = Some(1);
         t.prev = Some(0);
         let mut arena = Vec::<Node<K, V>>::new();
@@ -92,14 +92,14 @@ where
                 match self.free_indices.len() {
                     x if x == 0 => {
                         let pos = self.arena.len();
-                        let cur = Node::new(Some(key.clone()), Some(value.clone()), pos);
+                        let cur = Node::new(Some(key.clone()), Some(value.clone()));
                         self.arena.push(cur);
                         self.key_to_pos.insert(key.clone(), pos);
                         self.add_node(pos);
                     }
                     _ => {
                         let pos = self.free_indices.pop().unwrap();
-                        let cur = Node::new(Some(key.clone()), Some(value.clone()), pos);
+                        let cur = Node::new(Some(key.clone()), Some(value.clone()));
                         self.arena[pos] = cur;
                         self.key_to_pos.insert(key.clone(), pos);
                         self.add_node(pos);
@@ -122,7 +122,6 @@ where
 struct Node<K, V> {
     key: Option<K>, 
     val: Option<V>, 
-    pos: usize, 
     prev: Link, 
     next: Link
 }
@@ -132,11 +131,10 @@ where
     K: Eq + std::hash::Hash + Clone, 
     V: Clone,
 {
-    pub fn new(k: Option<K>, v: Option<V>, p: usize) -> Self {
+    pub fn new(k: Option<K>, v: Option<V>) -> Self {
         Node {
             key: k, 
             val: v, 
-            pos: p, 
             prev: None, 
             next: None
         }
