@@ -1,10 +1,15 @@
+use ordered_float::OrderedFloat;
+
 pub enum Command {
     Get { key: String },
     Set { key: String, value: String },
     Del { key: String },
     Exists { key: String }, 
     DbSize, 
-    Clear
+    Clear, 
+    Zadd { key: String, member: String, score: OrderedFloat<f64> }, 
+    Zscore { key: String, member: String }, 
+    Zrem { key: String, member: String }
 }
 
 #[derive(Debug)]
@@ -12,6 +17,7 @@ pub enum ProtocolError {
     Empty,
     UnknownCommand(String),
     WrongArity,
+    WrongType(String),
     InvalidUtf8,
 }
 
@@ -73,6 +79,45 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
                     return Err(ProtocolError::WrongArity);
                 }
                 Ok(Command::Clear)
+            }
+            "ZADD" => {
+                let key = words.next().ok_or(ProtocolError::WrongArity)?;
+                let member = words.next().ok_or(ProtocolError::WrongArity)?;
+                let score_text = words.next().ok_or(ProtocolError::WrongArity)?;
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
+                let score = score_text.parse::<f64>();
+                if let Err(_) = score {
+                    return Err(ProtocolError::WrongType("score".to_string()));
+                }
+                Ok(Command::Zadd {
+                    key: key.to_string(), 
+                    member: member.to_string(), 
+                    score: OrderedFloat(score.unwrap())
+                })
+            }
+            "ZSCORE" => {
+                let key = words.next().ok_or(ProtocolError::WrongArity)?;
+                let member = words.next().ok_or(ProtocolError::WrongArity)?;
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
+                Ok(Command::Zscore {
+                    key: key.to_string(), 
+                    member: member.to_string()
+                })
+            }
+            "ZREM" => {
+                let key = words.next().ok_or(ProtocolError::WrongArity)?;
+                let member = words.next().ok_or(ProtocolError::WrongArity)?;
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
+                Ok(Command::Zrem {
+                    key: key.to_string(), 
+                    member: member.to_string()
+                })
             }
             other => Err(ProtocolError::UnknownCommand(other.to_string())),
         },

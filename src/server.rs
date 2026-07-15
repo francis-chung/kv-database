@@ -85,6 +85,9 @@ async fn handle_connection(stream: TcpStream, store: Store) -> Result<(), Box<dy
             Err(ProtocolError::WrongArity) => {
                 "ERR wrong number of arguments\n".to_string()
             }
+            Err(ProtocolError::WrongType(t)) => {
+                format!("ERR field '{t}' was wrong type\n")
+            }
             Err(ProtocolError::InvalidUtf8) => {
                 "ERR non-UTF-8 character(s)\n".to_string()
             }
@@ -100,8 +103,8 @@ async fn handle_connection(stream: TcpStream, store: Store) -> Result<(), Box<dy
 fn dispatch(cmd: Command, store: &Store) -> String {
     match cmd {
         Command::Get { key } => {
-            let mut map = store.lock().unwrap();
-            match map.kv_store.get(&key) {
+            let mut db = store.lock().unwrap();
+            match db.kv_store.get(&key) {
                 Some(value) => format!("VALUE {value}\n"), 
                 None => "NIL\n".to_string()
             }
@@ -115,8 +118,8 @@ fn dispatch(cmd: Command, store: &Store) -> String {
             "OK\n".to_string()
         }
         Command::Exists { key } => {
-            let mut map = store.lock().unwrap();
-            match map.kv_store.contains_key(&key) {
+            let mut db = store.lock().unwrap();
+            match db.kv_store.contains_key(&key) {
                 true => "1\n".to_string(), 
                 false => "0\n".to_string()
             }
@@ -127,6 +130,21 @@ fn dispatch(cmd: Command, store: &Store) -> String {
         }
         Command::Clear => {
             store.lock().unwrap().kv_store.clear();
+            "OK\n".to_string()
+        }
+        Command::Zadd { key, member, score } => {
+            store.lock().unwrap().sorted_sets.zadd(&key, member, score);
+            "OK\n".to_string()
+        }
+        Command::Zscore { key, member } => {
+            let db = store.lock().unwrap();
+            match db.sorted_sets.zscore(&key, &member) {
+                Some(value) => format!("VALUE {value}\n"), 
+                None => "NIL\n".to_string()
+            }
+        }
+        Command::Zrem { key, member } => {
+            store.lock().unwrap().sorted_sets.zrem(&key, &member);
             "OK\n".to_string()
         }
     }
