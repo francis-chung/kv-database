@@ -34,6 +34,12 @@ where
     }
 
     pub fn insert(&mut self, key: K, value: V) {
+        if let Some(&pos) = self.key_to_pos.get(&key) {
+            if self.nodes[pos].score == value {
+                return;
+            }
+            self.remove(&key);
+        }
         let mut to_update: Vec<Option<usize>> = vec![None; self.max_level];
         let mut index: Option<usize> = None;
         for i in (0..=self.level).rev() {
@@ -79,6 +85,10 @@ where
                 }
             }
         }
+    }
+
+    pub fn remove(&mut self, key: &K) {
+
     }
 }
 
