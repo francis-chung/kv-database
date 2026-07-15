@@ -7,3 +7,4 @@ default-run = "kv-database"
 [dependencies]
 tokio = { version = "1.52.3", features = ["full"] }
 rand = "0.10"
+ordered-float = "5.3.0"

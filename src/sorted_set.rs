@@ -28,6 +28,10 @@ where
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.key_to_pos.is_empty()
+    }
+
     pub fn get(&self, key: &K) -> Option<&V> {
         let pos = *self.key_to_pos.get(key)?;
         Some(&self.nodes[pos].score)
