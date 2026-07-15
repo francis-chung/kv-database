@@ -63,7 +63,6 @@ where
         while self.level < new_level {
             self.level += 1;
             self.head.push(None);
-            to_update[self.level] = None;
         }
         let pos = if let Some(result) = self.free_list.pop() {
             self.nodes[result] = Node::new(key.clone(), value, new_level + 1);
@@ -92,7 +91,7 @@ where
         let score = self.nodes[pos].score.clone();
         let height = self.nodes[pos].forward.len();
         let mut index: Option<usize> = None;
-        for i in (0..height).rev() {
+        for i in (0..=self.level).rev() {
             let mut next = match index {
                 Some(index) => self.nodes[index].forward[i], 
                 None => self.head[i]
@@ -104,20 +103,22 @@ where
                 index = Some(next_val);
                 next = self.nodes[next_val].forward[i];
             }
-            match index {
-                Some(prev_pos) => {
-                    if self.nodes[prev_pos].forward[i] == Some(pos) {
-                        self.nodes[prev_pos].forward[i] = self.nodes[pos].forward[i];
+            if i < height {
+                match index {
+                    Some(prev_pos) => {
+                        if self.nodes[prev_pos].forward[i] == Some(pos) {
+                            self.nodes[prev_pos].forward[i] = self.nodes[pos].forward[i];
+                        }
                     }
-                }
-                None => {
-                    if self.head[i] == Some(pos) {
-                        self.head[i] = self.nodes[pos].forward[i];
+                    None => {
+                        if self.head[i] == Some(pos) {
+                            self.head[i] = self.nodes[pos].forward[i];
+                        }
                     }
                 }
             }
         }
-        while self.level > 0 && self.head[self.level] == None {
+        while self.level > 0 && self.head[self.level].is_none() {
             self.level -= 1;
             self.head.pop();
         }
@@ -136,8 +137,8 @@ struct Node<K, V>
 
 impl<K, V> Node<K, V>
 where
-    K: Ord + std::hash::Hash + Clone,
-    V: Ord + Clone
+    K: Clone,
+    V: Clone
 {
     fn new(key: K, score: V, height: usize) -> Self {
         Node {
