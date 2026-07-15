@@ -7,8 +7,17 @@ use crate::sorted_set_store::SortedSetStore;
 const LRU_CAPACITY: usize = 50;
 
 pub struct Db {
-    strings: HashMapWrapper<String, String>, 
-    sorted_sets: SortedSetStore<String, OrderedFloat<f64>>
+    pub kv_store: HashMapWrapper<String, String>, 
+    pub sorted_sets: SortedSetStore<String, OrderedFloat<f64>>
+}
+
+impl Db {
+    pub fn new() -> Self {
+        Self {
+            kv_store: HashMapWrapper::<String, String>::new(),
+            sorted_sets: SortedSetStore::<String, OrderedFloat<f64>>::new()
+        }
+    }
 }
 
 pub struct HashMapWrapper<K, V> {

@@ -13,6 +13,12 @@ where
     K: Ord + std::hash::Hash + Clone, 
     V: Ord + Clone
 {
+    pub fn new() -> Self {
+        Self {
+            sets: HashMap::new()
+        }
+    }
+    
     pub fn zadd(&mut self, key: &K, member: K, score: V) -> bool {
         let list = self.sets
             .entry(key.clone())

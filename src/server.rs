@@ -7,7 +7,7 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader, AsyncWriteExt}
 };
 
-use crate::store::HashMapWrapper;
+use crate::store::Db;
 use crate::protocol::{
     parse_command, 
     Command, 
@@ -16,7 +16,7 @@ use crate::protocol::{
 
 const ADDRESS: &str = "127.0.0.1:7878";
 
-type Store = Arc<Mutex<HashMapWrapper<String, String>>>;
+type Store = Arc<Mutex<Db>>;
 
 // begins watching the address and delegating connection handling
 #[tokio::main]
@@ -29,7 +29,7 @@ pub async fn start_connection() {
         }
     };
     
-    let store = Arc::new(Mutex::new(HashMapWrapper::<String, String>::new()));
+    let store = Arc::new(Mutex::new(Db::new()));
     
     loop {
         let (stream, _) = match listener.accept().await {
@@ -100,32 +100,32 @@ fn dispatch(cmd: Command, store: &Store) -> String {
     match cmd {
         Command::Get { key } => {
             let mut map = store.lock().unwrap();
-            match map.get(&key) {
+            match map.kv_store.get(&key) {
                 Some(value) => format!("VALUE {value}\n"), 
                 None => "NIL\n".to_string()
             }
         }
         Command::Set { key, value } => {
-            store.lock().unwrap().insert(key, value);
+            store.lock().unwrap().kv_store.insert(key, value);
             "OK\n".to_string()
         }
         Command::Del { key } => {
-            store.lock().unwrap().remove(&key);
+            store.lock().unwrap().kv_store.remove(&key);
             "OK\n".to_string()
         }
         Command::Exists { key } => {
             let mut map = store.lock().unwrap();
-            match map.contains_key(&key) {
+            match map.kv_store.contains_key(&key) {
                 true => "1\n".to_string(), 
                 false => "0\n".to_string()
             }
         }
         Command::DbSize => {
-            let result = store.lock().unwrap().len();
+            let result = store.lock().unwrap().kv_store.len();
             format!("{result}\n")
         }
         Command::Clear => {
-            store.lock().unwrap().clear();
+            store.lock().unwrap().kv_store.clear();
             "OK\n".to_string()
         }
     }

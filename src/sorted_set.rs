@@ -18,7 +18,7 @@ where
     pub fn new(max_level: usize) -> Self {
         assert!(max_level > 0);
         
-        SkipList {
+        Self {
             nodes: Vec::new(), 
             head: vec![None; 1], 
             free_list: Vec::new(), 
