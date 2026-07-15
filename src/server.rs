@@ -50,9 +50,10 @@ pub async fn start_connection() {
 }
 
 // returns response based on request
-async fn handle_connection(mut stream: TcpStream, store: Store) -> Result<(), Box<dyn Error>> {
+async fn handle_connection(stream: TcpStream, store: Store) -> Result<(), Box<dyn Error>> {
     // into_split used for looping while requesting and responding later
     // into_split consumes stream and uses Arc-like architecture
+    // both halves can be used and mutated without Mutex
     let (reader, mut writer) = stream.into_split();
     // enables async buffering 
     let mut buf_reader = BufReader::new(reader);
