@@ -20,7 +20,7 @@ where
         
         SkipList {
             nodes: Vec::new(), 
-            head: Vec::new(), 
+            head: vec![None; 1], 
             free_list: Vec::new(), 
             key_to_pos: HashMap::new(), 
             max_level, 
@@ -87,8 +87,43 @@ where
         }
     }
 
-    pub fn remove(&mut self, key: &K) {
-
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        let &pos = self.key_to_pos.get(key)?;
+        let score = self.nodes[pos].score.clone();
+        let height = self.nodes[pos].forward.len();
+        let mut index: Option<usize> = None;
+        for i in (0..height).rev() {
+            let mut next = match index {
+                Some(index) => self.nodes[index].forward[i], 
+                None => self.head[i]
+            };
+            while let Some(next_val) = next && (
+                self.nodes[next_val].score < score || 
+                (self.nodes[next_val].score == score && self.nodes[next_val].key < *key)
+            ) {
+                index = Some(next_val);
+                next = self.nodes[next_val].forward[i];
+            }
+            match index {
+                Some(prev_pos) => {
+                    if self.nodes[prev_pos].forward[i] == Some(pos) {
+                        self.nodes[prev_pos].forward[i] = self.nodes[pos].forward[i];
+                    }
+                }
+                None => {
+                    if self.head[i] == Some(pos) {
+                        self.head[i] = self.nodes[pos].forward[i];
+                    }
+                }
+            }
+        }
+        while self.level > 0 && self.head[self.level] == None {
+            self.level -= 1;
+            self.head.pop();
+        }
+        self.free_list.push(pos);
+        self.key_to_pos.remove(key);
+        Some(score)
     }
 }
 
