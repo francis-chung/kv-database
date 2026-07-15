@@ -1,9 +1,15 @@
 use std::collections::HashMap;
+use ordered_float::OrderedFloat;
 
 use crate::lru_cache::LRUCache;
-use crate::sorted_set::SkipList;
+use crate::sorted_set_store::SortedSetStore;
 
 const LRU_CAPACITY: usize = 50;
+
+pub struct Db {
+    strings: HashMapWrapper<String, String>, 
+    sorted_sets: SortedSetStore<String, OrderedFloat<f64>>
+}
 
 pub struct HashMapWrapper<K, V> {
     map: HashMap<K, V>,

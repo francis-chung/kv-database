@@ -1,34 +1,35 @@
 use std::collections::HashMap;
-use ordered_float::OrderedFloat;
 
 use crate::sorted_set::SkipList;
 
-pub struct SortedSetStore {
-    sets: HashMap<String, SkipList<String, OrderedFloat<f64>>>
+const TREE_HEIGHT: usize = 16;
+
+pub struct SortedSetStore<K, V> {
+    sets: HashMap<K, SkipList<K, V>>
 }
 
-impl SortedSetStore {
-    pub fn zadd(&mut self, key: &str, member: String, score: f64) -> bool {
+impl<K, V> SortedSetStore<K, V> 
+where 
+    K: Ord + std::hash::Hash + Clone, 
+    V: Ord + Clone
+{
+    pub fn zadd(&mut self, key: &K, member: K, score: V) -> bool {
         let list = self.sets
-            .entry(key.to_string())
-            .or_insert_with(|| SkipList::new(16));
+            .entry(key.clone())
+            .or_insert_with(|| SkipList::new(TREE_HEIGHT));
         let is_new = list.get(&member).is_none();
-        list.insert(member, OrderedFloat(score));
+        list.insert(member, score);
         is_new
     }
 
     // OPTIMIZE: allocates String just for referenced &String lookup every op
-    pub fn zscore(&self, key: &str, member: &str) -> Option<f64> {
-        self.sets.get(key)?
-            .get(&member.to_string())
-            .map(|score| score.0)
+    pub fn zscore(&self, key: &K, member: &K) -> Option<V> {
+        self.sets.get(key)?.get(member).cloned()
     }
 
-    pub fn zrem(&mut self, key: &str, member: &str) -> Option<f64> {
+    pub fn zrem(&mut self, key: &K, member: &K) -> Option<V> {
         let list = self.sets.get_mut(key)?;
-        let result = list
-            .remove(&member.to_string())
-            .map(|score| score.0);
+        let result = list.remove(member);
         if list.is_empty() {
             self.sets.remove(key);
         }
