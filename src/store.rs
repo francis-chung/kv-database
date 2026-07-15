@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::lru_cache::LRUCache;
-use crate::skip_list::SkipList;
+use crate::sorted_set::SkipList;
 
 const LRU_CAPACITY: usize = 50;
 

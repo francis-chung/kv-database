@@ -7,7 +7,7 @@ use std::{
 pub mod store;
 pub mod protocol;
 pub mod lru_cache;
-pub mod skip_list;
+pub mod sorted_set;
 
 // sender is the sending end of mpsc
 // wrapped in Option to facilitate dropping, which closes the channel
