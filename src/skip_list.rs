@@ -41,7 +41,10 @@ where
                 Some(index) => self.nodes[index].forward[i], 
                 None => self.head[i]
             };
-            while let Some(next_val) = next && self.nodes[next_val].score < value {
+            while let Some(next_val) = next && (
+                self.nodes[next_val].score < value || 
+                (self.nodes[next_val].score == value && self.nodes[next_val].key < key)
+            ) {
                 index = Some(next_val);
                 next = self.nodes[next_val].forward[i];
             }
