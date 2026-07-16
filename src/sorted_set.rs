@@ -8,7 +8,7 @@ pub struct SkipList<K, V>
     head: Vec<Option<usize>>, 
     head_span: Vec<usize>, 
     free_list: Vec<usize>, 
-    pub key_to_pos: HashMap<K, usize>, // REMOVE pub (USED FOR DEBUGGING)
+    key_to_pos: HashMap<K, usize>, 
     max_level: usize, 
     level: usize
 }
