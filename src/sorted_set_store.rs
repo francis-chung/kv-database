@@ -42,8 +42,13 @@ where
         result
     }
 
-    pub fn zrange(&self, key: &K, from: usize, to: usize) -> Option<Vec<(usize, &K)>> {
+    pub fn zrange(&self, key: &K, from: isize, to: isize) -> Option<Vec<K>> {
         let list = self.sets.get(key)?;
-        Some(list.range(from, to))
+        let result = list.range(from, to);
+        if !result.is_empty() {
+            Some(result)
+        } else {
+            None
+        }
     }
 }

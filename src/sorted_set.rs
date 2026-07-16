@@ -1,5 +1,7 @@
-use std::collections::HashMap;
-
+use std::{
+    collections::HashMap, 
+    convert::TryInto
+};
 pub struct SkipList<K, V> 
 {
     nodes: Vec<Node<K, V>>, 
@@ -162,7 +164,11 @@ where
         Some(score)
     }
 
-    pub fn range(&self, from: usize, to: usize) -> Vec<(usize, &K)> {
+    pub fn range(&self, from_i: isize, to_i: isize) -> Vec<K> {
+        if self.key_to_pos.is_empty() { return Vec::new() }
+        let from: usize = from_i.rem_euclid(self.key_to_pos.len().try_into().unwrap()).try_into().unwrap();
+        let to: usize = to_i.rem_euclid(self.key_to_pos.len().try_into().unwrap()).try_into().unwrap();
+        if to < from { return Vec::new() }
         let mut current: Option<usize> = None;
         let mut count: usize = 0;
         for i in (0..=self.level).rev() {
@@ -176,7 +182,7 @@ where
                 } else {
                     self.head_span[i]
                 };
-                if count + dist >= from {
+                if count + dist > from {
                     break;
                 }
                 count += dist;
@@ -184,13 +190,13 @@ where
                 next = self.nodes[next_val].forward[i];
             }
         }
-        let mut list: Vec<(usize, &K)> = Vec::new();
-        for i in 0..=(to - from) {
+        let mut list: Vec<K> = Vec::new();
+        for _ in 0..=(to - from) {
             current = match current {
                 Some(current_pos) => self.nodes[current_pos].forward[0], 
                 None => self.head[0]
             };
-            list.push((from + i, &self.nodes[current.unwrap()].key));
+            list.push(self.nodes[current.unwrap()].key.clone());
         }
         list
     }

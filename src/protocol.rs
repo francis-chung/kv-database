@@ -10,7 +10,7 @@ pub enum Command {
     Zadd { key: String, member: String, score: OrderedFloat<f64> }, 
     Zscore { key: String, member: String }, 
     Zrem { key: String, member: String }, 
-    Zrange { key: String, from: usize, to: usize }
+    Zrange { key: String, from: isize, to: isize }
 }
 
 #[derive(Debug)]
@@ -127,11 +127,11 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
                 if words.next().is_some() {
                     return Err(ProtocolError::WrongArity);
                 }
-                let from = from_text.parse::<usize>();
+                let from = from_text.parse::<isize>();
                 if let Err(_) = from {
                     return Err(ProtocolError::WrongType("from".to_string()));
                 }
-                let to = to_text.parse::<usize>();
+                let to = to_text.parse::<isize>();
                 if let Err(_) = to {
                     return Err(ProtocolError::WrongType("to".to_string()));
                 }

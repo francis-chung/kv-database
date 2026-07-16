@@ -2,7 +2,6 @@ use std::{
     sync::{Arc, Mutex},
     error::Error
 };
-use kv_database::sorted_set;
 use tokio::{
     net::{TcpListener, TcpStream}, 
     io::{AsyncBufReadExt, BufReader, AsyncWriteExt}
@@ -152,8 +151,8 @@ fn dispatch(cmd: Command, store: &Store) -> String {
             let mut response = String::new();
             let db = store.lock().unwrap();
             if let Some(rows) = db.sorted_sets.zrange(&key, from, to) {
-                for (pos, key) in &rows {
-                    response += &format!("POSITION {pos}: KEY {key}\n")
+                for (index, key) in rows.iter().enumerate() {
+                    response += &format!("{}) \"{key}\"\n", index + 1)
                 }
             } else {
                 response = "NIL\n".to_string();
