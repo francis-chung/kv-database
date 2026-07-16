@@ -134,17 +134,8 @@ fn dispatch(cmd: Command, store: &Store) -> String {
             "OK\n".to_string()
         }
         Command::Zadd { key, member, score } => {
-            // store.lock().unwrap().sorted_sets.zadd(&key, member, score);
-            let mut db = store.lock().unwrap();
-            db.sorted_sets.zadd(&key, member, score);
-            let org_response = "OK\n".to_string();
-            let mut full_response = org_response;
-            let sorted_set = db.sorted_sets.sets.get(&key).unwrap();
-            for (key, _) in &sorted_set.key_to_pos {
-                let checker = format!("type 1: {}; type 2: {}\n", sorted_set.helper1(&key), sorted_set.helper2(&key));
-                full_response += &checker;
-            }
-            full_response
+            store.lock().unwrap().sorted_sets.zadd(&key, member, score);
+            "OK\n".to_string()
         }
         Command::Zscore { key, member } => {
             let db = store.lock().unwrap();
@@ -154,17 +145,20 @@ fn dispatch(cmd: Command, store: &Store) -> String {
             }
         }
         Command::Zrem { key, member } => {
-            // store.lock().unwrap().sorted_sets.zrem(&key, &member);
-            let mut db = store.lock().unwrap();
-            db.sorted_sets.zrem(&key, &member);
-            let org_response = "OK\n".to_string();
-            let mut full_response = org_response;
-            let sorted_set = db.sorted_sets.sets.get(&key).unwrap();
-            for (key, _) in &sorted_set.key_to_pos {
-                let checker = format!("type 1: {}; type 2: {}\n", sorted_set.helper1(&key), sorted_set.helper2(&key));
-                full_response += &checker;
+            store.lock().unwrap().sorted_sets.zrem(&key, &member);
+            "OK\n".to_string()
+        }
+        Command::Zrange { key, from, to } => {
+            let mut response = String::new();
+            let db = store.lock().unwrap();
+            if let Some(rows) = db.sorted_sets.zrange(&key, from, to) {
+                for (pos, key) in &rows {
+                    response += &format!("POSITION {pos}: KEY {key}\n")
+                }
+            } else {
+                response = "NIL\n".to_string();
             }
-            full_response
+            response
         }
     }
 }

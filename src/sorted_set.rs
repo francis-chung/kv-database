@@ -162,40 +162,37 @@ where
         Some(score)
     }
 
-    pub fn helper1(&self, key: &K) -> usize {
-        let mut current = self.head[0];
-        let mut count: usize = 1;
-        while let Some(pos) = current && self.nodes[pos].key != *key {
-            current = self.nodes[pos].forward[0];
-            count += 1;
-        }
-        count
-    }
-
-    pub fn helper2(&self, key: &K) -> usize {
-        let &pos = &self.key_to_pos[key];
-        let score = self.nodes[pos].score.clone();
+    pub fn range(&self, from: usize, to: usize) -> Vec<(usize, &K)> {
         let mut current: Option<usize> = None;
-        let mut count: usize = 1;
+        let mut count: usize = 0;
         for i in (0..=self.level).rev() {
             let mut next = match current {
                 Some(current_pos) => self.nodes[current_pos].forward[i],
                 None => self.head[i]
             };
-            while let Some(next_val) = next && (
-                self.nodes[next_val].score < score || 
-                (self.nodes[next_val].score == score && self.nodes[next_val].key < *key)
-            ) {
-                count += if let Some(inner) = current {
+            while let Some(next_val) = next {
+                let dist = if let Some(inner) = current {
                     self.nodes[inner].span[i]
                 } else {
                     self.head_span[i]
                 };
-                current = Some(next_val);
+                if count + dist >= from {
+                    break;
+                }
+                count += dist;
+                current = next;
                 next = self.nodes[next_val].forward[i];
             }
         }
-        count
+        let mut list: Vec<(usize, &K)> = Vec::new();
+        for i in 0..=(to - from) {
+            current = match current {
+                Some(current_pos) => self.nodes[current_pos].forward[0], 
+                None => self.head[0]
+            };
+            list.push((from + i, &self.nodes[current.unwrap()].key));
+        }
+        list
     }
 }
 

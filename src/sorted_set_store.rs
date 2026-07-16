@@ -5,7 +5,7 @@ use crate::sorted_set::SkipList;
 const TREE_HEIGHT: usize = 16;
 
 pub struct SortedSetStore<K, V> {
-    pub sets: HashMap<K, SkipList<K, V>> // REMOVE pub (USED FOR DEBUGGING)
+    sets: HashMap<K, SkipList<K, V>>
 }
 
 impl<K, V> SortedSetStore<K, V> 
@@ -40,5 +40,10 @@ where
             self.sets.remove(key);
         }
         result
+    }
+
+    pub fn zrange(&self, key: &K, from: usize, to: usize) -> Option<Vec<(usize, &K)>> {
+        let list = self.sets.get(key)?;
+        Some(list.range(from, to))
     }
 }

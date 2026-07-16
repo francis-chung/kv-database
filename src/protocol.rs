@@ -9,7 +9,8 @@ pub enum Command {
     Clear, 
     Zadd { key: String, member: String, score: OrderedFloat<f64> }, 
     Zscore { key: String, member: String }, 
-    Zrem { key: String, member: String }
+    Zrem { key: String, member: String }, 
+    Zrange { key: String, from: usize, to: usize }
 }
 
 #[derive(Debug)]
@@ -117,6 +118,27 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
                 Ok(Command::Zrem {
                     key: key.to_string(), 
                     member: member.to_string()
+                })
+            }
+            "ZRANGE" => {
+                let key = words.next().ok_or(ProtocolError::WrongArity)?;
+                let from_text = words.next().ok_or(ProtocolError::WrongArity)?;
+                let to_text = words.next().ok_or(ProtocolError::WrongArity)?;
+                if words.next().is_some() {
+                    return Err(ProtocolError::WrongArity);
+                }
+                let from = from_text.parse::<usize>();
+                if let Err(_) = from {
+                    return Err(ProtocolError::WrongType("from".to_string()));
+                }
+                let to = to_text.parse::<usize>();
+                if let Err(_) = to {
+                    return Err(ProtocolError::WrongType("to".to_string()));
+                }
+                Ok(Command::Zrange {
+                    key: key.to_string(), 
+                    from: from.unwrap(), 
+                    to: to.unwrap()
                 })
             }
             other => Err(ProtocolError::UnknownCommand(other.to_string())),
