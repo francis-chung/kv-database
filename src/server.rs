@@ -2,6 +2,7 @@ use std::{
     sync::{Arc, Mutex},
     error::Error
 };
+use kv_database::sorted_set;
 use tokio::{
     net::{TcpListener, TcpStream}, 
     io::{AsyncBufReadExt, BufReader, AsyncWriteExt}
@@ -133,8 +134,17 @@ fn dispatch(cmd: Command, store: &Store) -> String {
             "OK\n".to_string()
         }
         Command::Zadd { key, member, score } => {
-            store.lock().unwrap().sorted_sets.zadd(&key, member, score);
-            "OK\n".to_string()
+            // store.lock().unwrap().sorted_sets.zadd(&key, member, score);
+            let mut db = store.lock().unwrap();
+            db.sorted_sets.zadd(&key, member, score);
+            let org_response = "OK\n".to_string();
+            let mut full_response = org_response;
+            let sorted_set = db.sorted_sets.sets.get(&key).unwrap();
+            for (key, _) in &sorted_set.key_to_pos {
+                let checker = format!("type 1: {}; type 2: {}\n", sorted_set.helper1(&key), sorted_set.helper2(&key));
+                full_response += &checker;
+            }
+            full_response
         }
         Command::Zscore { key, member } => {
             let db = store.lock().unwrap();
@@ -144,8 +154,17 @@ fn dispatch(cmd: Command, store: &Store) -> String {
             }
         }
         Command::Zrem { key, member } => {
-            store.lock().unwrap().sorted_sets.zrem(&key, &member);
-            "OK\n".to_string()
+            // store.lock().unwrap().sorted_sets.zrem(&key, &member);
+            let mut db = store.lock().unwrap();
+            db.sorted_sets.zrem(&key, &member);
+            let org_response = "OK\n".to_string();
+            let mut full_response = org_response;
+            let sorted_set = db.sorted_sets.sets.get(&key).unwrap();
+            for (key, _) in &sorted_set.key_to_pos {
+                let checker = format!("type 1: {}; type 2: {}\n", sorted_set.helper1(&key), sorted_set.helper2(&key));
+                full_response += &checker;
+            }
+            full_response
         }
     }
 }

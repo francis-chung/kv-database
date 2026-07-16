@@ -5,7 +5,7 @@ use crate::sorted_set::SkipList;
 const TREE_HEIGHT: usize = 16;
 
 pub struct SortedSetStore<K, V> {
-    sets: HashMap<K, SkipList<K, V>>
+    pub sets: HashMap<K, SkipList<K, V>> // REMOVE pub (USED FOR DEBUGGING)
 }
 
 impl<K, V> SortedSetStore<K, V> 

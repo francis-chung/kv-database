@@ -6,7 +6,7 @@ pub struct SkipList<K, V>
     head: Vec<Option<usize>>, 
     head_span: Vec<usize>, 
     free_list: Vec<usize>, 
-    key_to_pos: HashMap<K, usize>, 
+    pub key_to_pos: HashMap<K, usize>, // REMOVE pub (USED FOR DEBUGGING)
     max_level: usize, 
     level: usize
 }
@@ -52,7 +52,7 @@ where
         let mut steps: usize = 0;
         for i in (0..=self.level).rev() {
             let mut next = match index {
-                Some(index) => self.nodes[index].forward[i], 
+                Some(index_pos) => self.nodes[index_pos].forward[i], 
                 None => self.head[i]
             };
             while let Some(next_val) = next && (
@@ -118,7 +118,7 @@ where
         let mut index: Option<usize> = None;
         for i in (0..=self.level).rev() {
             let mut next = match index {
-                Some(index) => self.nodes[index].forward[i], 
+                Some(index_pos) => self.nodes[index_pos].forward[i], 
                 None => self.head[i]
             };
             while let Some(next_val) = next && (
@@ -160,6 +160,42 @@ where
         self.free_list.push(pos);
         self.key_to_pos.remove(key);
         Some(score)
+    }
+
+    pub fn helper1(&self, key: &K) -> usize {
+        let mut current = self.head[0];
+        let mut count: usize = 1;
+        while let Some(pos) = current && self.nodes[pos].key != *key {
+            current = self.nodes[pos].forward[0];
+            count += 1;
+        }
+        count
+    }
+
+    pub fn helper2(&self, key: &K) -> usize {
+        let &pos = &self.key_to_pos[key];
+        let score = self.nodes[pos].score.clone();
+        let mut current: Option<usize> = None;
+        let mut count: usize = 1;
+        for i in (0..=self.level).rev() {
+            let mut next = match current {
+                Some(current_pos) => self.nodes[current_pos].forward[i],
+                None => self.head[i]
+            };
+            while let Some(next_val) = next && (
+                self.nodes[next_val].score < score || 
+                (self.nodes[next_val].score == score && self.nodes[next_val].key < *key)
+            ) {
+                count += if let Some(inner) = current {
+                    self.nodes[inner].span[i]
+                } else {
+                    self.head_span[i]
+                };
+                current = Some(next_val);
+                next = self.nodes[next_val].forward[i];
+            }
+        }
+        count
     }
 }
 
