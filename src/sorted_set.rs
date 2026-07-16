@@ -4,6 +4,7 @@ pub struct SkipList<K, V>
 {
     nodes: Vec<Node<K, V>>, 
     head: Vec<Option<usize>>, 
+    head_span: Vec<usize>, 
     free_list: Vec<usize>, 
     key_to_pos: HashMap<K, usize>, 
     max_level: usize, 
@@ -21,6 +22,7 @@ where
         Self {
             nodes: Vec::new(), 
             head: vec![None; 1], 
+            head_span: vec![0; 1], 
             free_list: Vec::new(), 
             key_to_pos: HashMap::new(), 
             max_level, 
@@ -45,7 +47,9 @@ where
             self.remove(&key);
         }
         let mut to_update: Vec<Option<usize>> = vec![None; self.max_level];
+        let mut rank: Vec<usize> = vec![0; self.max_level];
         let mut index: Option<usize> = None;
+        let mut steps: usize = 0;
         for i in (0..=self.level).rev() {
             let mut next = match index {
                 Some(index) => self.nodes[index].forward[i], 
@@ -55,10 +59,16 @@ where
                 self.nodes[next_val].score < value || 
                 (self.nodes[next_val].score == value && self.nodes[next_val].key < key)
             ) {
+                steps += if let Some(inner) = index {
+                    self.nodes[inner].span[i]
+                } else {
+                    self.head_span[i]
+                };
                 index = Some(next_val);
                 next = self.nodes[next_val].forward[i];
             }
             to_update[i] = index;
+            rank[i] = steps;
         }
         let mut new_level: usize = 0;
         while rand::random() && new_level < self.max_level - 1 {
@@ -67,6 +77,7 @@ where
         while self.level < new_level {
             self.level += 1;
             self.head.push(None);
+            self.head_span.push(self.key_to_pos.len());
         }
         let pos = if let Some(result) = self.free_list.pop() {
             self.nodes[result] = Node::new(key.clone(), value, new_level + 1);
@@ -81,11 +92,21 @@ where
                 Some(prev_index) => {
                     self.nodes[pos].forward[i] = self.nodes[prev_index].forward[i];
                     self.nodes[prev_index].forward[i] = Some(pos);
+                    self.nodes[pos].span[i] = self.nodes[prev_index].span[i] - (rank[0] - rank[i]);
+                    self.nodes[prev_index].span[i] = (rank[0] - rank[i]) + 1;
                 }
                 None => {
                     self.nodes[pos].forward[i] = self.head[i];
                     self.head[i] = Some(pos);
+                    self.nodes[pos].span[i] = self.head_span[i] - (rank[0] - rank[i]);
+                    self.head_span[i] = (rank[0] - rank[i]) + 1;
                 }
+            }
+        }
+        for i in (new_level + 1)..=self.level {
+            match to_update[i] {
+                Some(prev_index) => self.nodes[prev_index].span[i] += 1, 
+                None => self.head_span[i] += 1
             }
         }
     }
@@ -112,19 +133,29 @@ where
                     Some(prev_pos) => {
                         if self.nodes[prev_pos].forward[i] == Some(pos) {
                             self.nodes[prev_pos].forward[i] = self.nodes[pos].forward[i];
+                            self.nodes[prev_pos].span[i] += self.nodes[pos].span[i];
+                            self.nodes[prev_pos].span[i] -= 1;
                         }
                     }
                     None => {
                         if self.head[i] == Some(pos) {
                             self.head[i] = self.nodes[pos].forward[i];
+                            self.head_span[i] += self.nodes[pos].span[i];
+                            self.head_span[i] -= 1;
                         }
                     }
+                }
+            } else {
+                match index {
+                    Some(prev_pos) => self.nodes[prev_pos].span[i] -= 1, 
+                    None => self.head_span[i] -= 1
                 }
             }
         }
         while self.level > 0 && self.head[self.level].is_none() {
             self.level -= 1;
             self.head.pop();
+            self.head_span.pop();
         }
         self.free_list.push(pos);
         self.key_to_pos.remove(key);
@@ -136,7 +167,8 @@ struct Node<K, V>
 {
     key: K, 
     score: V, 
-    forward: Vec<Option<usize>>
+    forward: Vec<Option<usize>>, 
+    span: Vec<usize>
 }
 
 impl<K, V> Node<K, V>
@@ -148,7 +180,8 @@ where
         Node {
             key, 
             score, 
-            forward: vec![None; height]
+            forward: vec![None; height], 
+            span: vec![0; height]
         }
     }
 }
