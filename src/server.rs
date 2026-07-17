@@ -82,6 +82,9 @@ async fn handle_connection(stream: TcpStream, store: Store) -> Result<(), Box<dy
             Err(ProtocolError::UnknownCommand(cmd)) => {
                 format!("ERR command {cmd} not recognized\n")
             }
+            Err(ProtocolError::UnknownKeyword(key)) => {
+                format!("ERR keyword {key} not recognized\n")
+            }
             Err(ProtocolError::WrongArity) => {
                 "ERR wrong number of arguments\n".to_string()
             }
@@ -147,12 +150,17 @@ fn dispatch(cmd: Command, store: &Store) -> String {
             store.lock().unwrap().sorted_sets.zrem(&key, &member);
             "OK\n".to_string()
         }
-        Command::Zrange { key, from, to } => {
+        Command::Zrange { key, from, to, with_scores } => {
             let mut response = String::new();
             let db = store.lock().unwrap();
-            if let Some(rows) = db.sorted_sets.zrange(&key, from, to) {
-                for (index, key) in rows.iter().enumerate() {
-                    response += &format!("{}) \"{key}\"\n", index + 1)
+            if let Some(rows) = db.sorted_sets.zrange(&key, from, to, with_scores) {
+                for (index, (key, poss_value)) in rows.iter().enumerate() {
+                    if let Some(val) = poss_value {
+                        response += &format!("{}) \"{key}\"\n", 2 * index + 1);
+                        response += &format!("{}) \"{val}\"\n", 2 * index + 2);
+                    } else {
+                        response += &format!("{}) \"{key}\"\n", index + 1);
+                    }
                 }
             } else {
                 response = "NIL\n".to_string();

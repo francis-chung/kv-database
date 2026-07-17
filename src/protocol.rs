@@ -10,13 +10,14 @@ pub enum Command {
     Zadd { key: String, member: String, score: OrderedFloat<f64> }, 
     Zscore { key: String, member: String }, 
     Zrem { key: String, member: String }, 
-    Zrange { key: String, from: isize, to: isize }
+    Zrange { key: String, from: isize, to: isize, with_scores: bool }
 }
 
 #[derive(Debug)]
 pub enum ProtocolError {
     Empty,
     UnknownCommand(String),
+    UnknownKeyword(String),
     WrongArity,
     WrongType(String),
     InvalidUtf8,
@@ -124,6 +125,7 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
                 let key = words.next().ok_or(ProtocolError::WrongArity)?;
                 let from_text = words.next().ok_or(ProtocolError::WrongArity)?;
                 let to_text = words.next().ok_or(ProtocolError::WrongArity)?;
+                let with_scores_opt = words.next();
                 if words.next().is_some() {
                     return Err(ProtocolError::WrongArity);
                 }
@@ -135,10 +137,22 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
                 if let Err(_) = to {
                     return Err(ProtocolError::WrongType("to".to_string()));
                 }
+                let mut with_scores_val: bool;
+                if let Some(with_scores) = with_scores_opt {
+                    let converted = with_scores.to_ascii_uppercase();
+                    if converted.as_str() == "WITHSCORES" {
+                        with_scores_val = true;
+                    } else {
+                        return Err(ProtocolError::UnknownKeyword(converted));
+                    }
+                } else {
+                    with_scores_val = false;
+                }
                 Ok(Command::Zrange {
                     key: key.to_string(), 
                     from: from.unwrap(), 
-                    to: to.unwrap()
+                    to: to.unwrap(), 
+                    with_scores: with_scores_val
                 })
             }
             other => Err(ProtocolError::UnknownCommand(other.to_string())),

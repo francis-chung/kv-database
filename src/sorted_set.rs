@@ -164,7 +164,7 @@ where
         Some(score)
     }
 
-    pub fn range(&self, from_i: isize, to_i: isize) -> Vec<K> {
+    pub fn range(&self, from_i: isize, to_i: isize, with_scores: bool) -> Vec<(K, Option<V>)> {
         if self.key_to_pos.is_empty() { return Vec::new() }
         let from: usize = from_i.rem_euclid(self.key_to_pos.len().try_into().unwrap()).try_into().unwrap();
         let to: usize = to_i.rem_euclid(self.key_to_pos.len().try_into().unwrap()).try_into().unwrap();
@@ -190,13 +190,18 @@ where
                 next = self.nodes[next_val].forward[i];
             }
         }
-        let mut list: Vec<K> = Vec::new();
+        let mut list: Vec<(K, Option<V>)> = Vec::new();
         for _ in 0..=(to - from) {
             current = match current {
                 Some(current_pos) => self.nodes[current_pos].forward[0], 
                 None => self.head[0]
             };
-            list.push(self.nodes[current.unwrap()].key.clone());
+            let val = if with_scores {
+                Some(self.nodes[current.unwrap()].score.clone())
+            } else {
+                None
+            };
+            list.push((self.nodes[current.unwrap()].key.clone(), val));
         }
         list
     }
