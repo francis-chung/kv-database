@@ -1,14 +1,12 @@
 {
   "name": "rust-kv-database",
   "image": "mcr.microsoft.com/devcontainers/rust:latest",
-
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
       "configureZshAsDefaultShell": true
     }
   },
-
   "customizations": {
     "vscode": {
       "extensions": [
@@ -25,15 +23,13 @@
       }
     }
   },
-
-  "postCreateCommand": "rustup component add clippy rustfmt && cargo build",
-
-  "forwardPorts": [7878],
-
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y ncat && rustup component add clippy rustfmt && cargo build",
+  "forwardPorts": [
+    7878
+  ],
   "hostRequirements": {
     "cpus": 2,
     "memory": "4gb"
   },
-
   "remoteUser": "vscode"
 }
