@@ -137,7 +137,7 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
                 if let Err(_) = to {
                     return Err(ProtocolError::WrongType("to".to_string()));
                 }
-                let mut with_scores_val: bool;
+                let with_scores_val: bool;
                 if let Some(with_scores) = with_scores_opt {
                     let converted = with_scores.to_ascii_uppercase();
                     if converted.as_str() == "WITHSCORES" {
