@@ -8,3 +8,4 @@ default-run = "kv-database"
 tokio = { version = "1.52.3", features = ["full"] }
 rand = "0.10"
 ordered-float = "5.3.0"
+crc32fast = "1.4"
