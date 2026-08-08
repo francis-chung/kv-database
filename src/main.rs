@@ -1,5 +1,6 @@
 mod protocol;
 mod server;
+mod engine;
 mod store;
 mod lru_cache;
 mod sorted_set;

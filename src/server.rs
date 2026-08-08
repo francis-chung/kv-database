@@ -7,16 +7,22 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader, AsyncWriteExt}
 };
 
+use crate::engine::Engine;
 use crate::store::Db;
 use crate::protocol::{
     parse_command, 
     Command, 
     ProtocolError
 };
+use crate::wal::{
+    encode_record, 
+    decode_record, 
+    WriteAheadLog
+};
 
 const ADDRESS: &str = "127.0.0.1:7878";
 
-type Store = Arc<Mutex<Db>>;
+type MutexEngine = Arc<Mutex<Engine>>;
 
 // begins watching the address and delegating connection handling
 #[tokio::main]
@@ -29,8 +35,15 @@ pub async fn start_connection() {
         }
     };
     
-    let store = Arc::new(Mutex::new(Db::new()));
-    
+    let Ok(logger) = WriteAheadLog::new("files/log.txt").await else {
+        eprintln!("Logger failed to initialize");
+        return;
+    };
+    let engine = Arc::new(Mutex::new(Engine {
+        store: Db::new(), 
+        logger
+    }));
+
     loop {
         let (stream, _) = match listener.accept().await {
             Ok(s) => s,
@@ -40,9 +53,9 @@ pub async fn start_connection() {
             }
         };
 
-        let store = Arc::clone(&store);
+        let cloned_engine = Arc::clone(&engine);
         let _ = tokio::spawn(async move {
-            if let Err(e) = handle_connection(stream, store).await {
+            if let Err(e) = handle_connection(stream, cloned_engine).await {
                 eprintln!("Failed to handle connection: {e}");
             }
         });
@@ -50,7 +63,7 @@ pub async fn start_connection() {
 }
 
 // returns response based on request
-async fn handle_connection(stream: TcpStream, store: Store) -> Result<(), Box<dyn Error>> {
+async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> Result<(), Box<dyn Error>> {
     // into_split used for looping while requesting and responding later
     // into_split consumes stream and uses Arc-like architecture
     // both halves can be used and mutated without Mutex
@@ -74,7 +87,7 @@ async fn handle_connection(stream: TcpStream, store: Store) -> Result<(), Box<dy
         let result = parse_command(&trimmed);
         let response = match result {
             Ok(cmd) => {
-                dispatch(cmd, &store)
+                dispatch(cmd, engine.clone())
             }
             Err(ProtocolError::Empty) => {
                 "ERR empty input\n".to_string()
@@ -103,57 +116,58 @@ async fn handle_connection(stream: TcpStream, store: Store) -> Result<(), Box<dy
     Ok(())
 }
 
-fn dispatch(cmd: Command, store: &Store) -> String {
+fn dispatch(cmd: Command, engine: MutexEngine) -> String {
+    // TODO: let bytes = encode_record(&cmd);
     match cmd {
         Command::Get { key } => {
-            let mut db = store.lock().unwrap();
-            match db.kv_store.get(&key) {
+            let mut eng = engine.lock().unwrap();
+            match eng.store.kv_store.get(&key) {
                 Some(value) => format!("VALUE {value}\n"), 
                 None => "NIL\n".to_string()
             }
         }
         Command::Set { key, value } => {
-            store.lock().unwrap().kv_store.insert(key, value);
+            engine.lock().unwrap().store.kv_store.insert(key, value);
             "OK\n".to_string()
         }
         Command::Del { key } => {
-            store.lock().unwrap().kv_store.remove(&key);
+            engine.lock().unwrap().store.kv_store.remove(&key);
             "OK\n".to_string()
         }
         Command::Exists { key } => {
-            let mut db = store.lock().unwrap();
-            match db.kv_store.contains_key(&key) {
+            let mut eng = engine.lock().unwrap();
+            match eng.store.kv_store.contains_key(&key) {
                 true => "1\n".to_string(), 
                 false => "0\n".to_string()
             }
         }
         Command::DbSize => {
-            let result = store.lock().unwrap().kv_store.len();
+            let result = engine.lock().unwrap().store.kv_store.len();
             format!("{result}\n")
         }
         Command::Clear => {
-            store.lock().unwrap().kv_store.clear();
+            engine.lock().unwrap().store.kv_store.clear();
             "OK\n".to_string()
         }
         Command::Zadd { key, member, score } => {
-            store.lock().unwrap().sorted_sets.zadd(&key, member, score);
+            engine.lock().unwrap().store.sorted_sets.zadd(&key, member, score);
             "OK\n".to_string()
         }
         Command::Zscore { key, member } => {
-            let db = store.lock().unwrap();
-            match db.sorted_sets.zscore(&key, &member) {
+            let eng = engine.lock().unwrap();
+            match eng.store.sorted_sets.zscore(&key, &member) {
                 Some(value) => format!("VALUE {value}\n"), 
                 None => "NIL\n".to_string()
             }
         }
         Command::Zrem { key, member } => {
-            store.lock().unwrap().sorted_sets.zrem(&key, &member);
+            engine.lock().unwrap().store.sorted_sets.zrem(&key, &member);
             "OK\n".to_string()
         }
         Command::Zrange { key, from, to, with_scores } => {
             let mut response = String::new();
-            let db = store.lock().unwrap();
-            if let Some(rows) = db.sorted_sets.zrange(&key, from, to, with_scores) {
+            let eng = engine.lock().unwrap();
+            if let Some(rows) = eng.store.sorted_sets.zrange(&key, from, to, with_scores) {
                 for (index, (key, poss_value)) in rows.iter().enumerate() {
                     if let Some(val) = poss_value {
                         response += &format!("{}) \"{key}\"\n", 2 * index + 1);
