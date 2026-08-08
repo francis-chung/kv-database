@@ -1,9 +1,36 @@
 use crate::protocol::Command;
 use crc32fast::Hasher;
-use std::io::{self, Read, Write};
+use std::{
+    io::{self, Read}
+};
+use tokio::{
+    fs::{File, OpenOptions}, 
+    io::{BufWriter, AsyncWriteExt}
+};
 
 const CMD_SET: u8 = 1;
 const CMD_DEL: u8 = 2;
+
+pub struct WriteAheadLog {
+    writer: BufWriter<File>
+}
+
+impl WriteAheadLog {
+    pub async fn new(path: &str) -> io::Result<Self> {
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .await?;
+        Ok(WriteAheadLog { writer: BufWriter::new(file) })
+    }
+    
+    async fn buffered_log(&mut self, record: &[u8]) -> io::Result<()> {
+        self.writer.write_all(record).await?;
+        self.writer.flush().await?;
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 pub enum WalError {
@@ -51,6 +78,7 @@ pub fn encode_record(cmd: &Command) -> Vec<u8> {
     record
 }
 
+// adds char slice into vector buffer in WAL record format
 fn write_bytes_with_len(buf: &mut Vec<u8>, data: &[u8]) {
     buf.extend_from_slice(&(data.len() as u32).to_le_bytes());
     buf.extend_from_slice(data);
@@ -86,11 +114,11 @@ pub fn decode_record<R: Read>(reader: &mut R) -> Result<Option<Command>, WalErro
         CMD_SET => {
             let key = read_string(&mut cursor)?;
             let value = read_string(&mut cursor)?;
-            Command::Set{ key, value }
+            Command::Set { key, value }
         }
         CMD_DEL => {
             let key = read_string(&mut cursor)?;
-            Command::Del{ key }
+            Command::Del { key }
         }
         other => return Err(WalError::UnknownCommandByte(other))
     };
@@ -116,5 +144,5 @@ fn read_string(cursor: &mut &[u8]) -> Result<String, WalError> {
     }
     let s = String::from_utf8(cursor[..len].to_vec()).map_err(|_| WalError::InvalidUtf8)?;
     *cursor = &cursor[len..];
-    OK(s)
+    Ok(s)
 }
