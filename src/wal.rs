@@ -26,9 +26,12 @@ impl WriteAheadLog {
         Ok(WriteAheadLog { writer: BufWriter::new(file) })
     }
     
+    // writes record to buffer, then writes to disk
     pub async fn buffered_log(&mut self, record: &[u8]) -> io::Result<()> {
         self.writer.write_all(record).await?;
         self.writer.flush().await?;
+        // forces OS to write buffered content to disk before returning
+        self.writer.get_ref().sync_all().await?;
         Ok(())
     }
 
