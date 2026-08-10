@@ -1,5 +1,5 @@
 use std::{
-    error::Error, io, net::Shutdown::Write, sync::Arc,
+    error::Error, io, sync::Arc,
 };
 use tokio::{
     net::{TcpListener, TcpStream}, 
@@ -16,36 +16,27 @@ use crate::protocol::{
 };
 use crate::wal::{
     encode_record, 
-    decode_record, 
     WriteAheadLog
 };
 
 const ADDRESS: &str = "127.0.0.1:7878";
-const LOG_PATH: &str = "files/log.txt";
+const LOG_PATH: &str = "src/files/log.txt";
 
 type MutexEngine = Arc<Mutex<Engine>>;
 
 // begins watching the address and delegating connection handling
-#[tokio::main]
-pub async fn start_connection() {
-    let listener = match TcpListener::bind(ADDRESS).await {
-        Ok(sock) => sock, 
-        Err(e) => {
-            eprintln!("Could not bind to {ADDRESS}: {e}");
-            return;
-        }
-    };
+pub async fn start_connection() -> io::Result<()> {
+    let listener = TcpListener::bind(ADDRESS).await?;
     
     let mut store = Db::new();
-    match WriteAheadLog::replay(LOG_PATH, &mut store) {
-        Ok(()) => (), 
-        Err(e) => eprintln!("Could not replay log: {e}")
-    };
+    // replays all logs prior to starting
+    // truncates log to longest well-formed prefix
+    let good_len = WriteAheadLog::replay(LOG_PATH, &mut store)?;
+    let file = std::fs::OpenOptions::new().write(true).open(LOG_PATH)?;
+    file.set_len(good_len)?;
 
-    let Ok(logger) = WriteAheadLog::new(LOG_PATH).await else {
-        eprintln!("Logger failed to initialize");
-        return;
-    };
+    // initializes logger to continue appending to log
+    let logger = WriteAheadLog::new(LOG_PATH).await?;
     let engine = Arc::new(Mutex::new(Engine {
         store,
         logger

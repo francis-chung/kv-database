@@ -1,3 +1,5 @@
+use std::io;
+
 mod protocol;
 mod server;
 mod engine;
@@ -7,6 +9,7 @@ mod sorted_set;
 mod sorted_set_store;
 mod wal;
 
-fn main() {
-    server::start_connection();
+#[tokio::main]
+pub async fn main() -> io::Result<()> {
+    server::start_connection().await
 }

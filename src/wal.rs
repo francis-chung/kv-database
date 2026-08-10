@@ -32,32 +32,46 @@ impl WriteAheadLog {
         Ok(())
     }
 
-    pub fn replay(path: &str, store: &mut Db) -> io::Result<()> {
+    pub fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
         let bytes = match std::fs::read(path) {
             Ok(b) => b, 
-            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(()), 
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
             Err(e) => return Err(e),
         };
         // Cursor facilitates passing byte array into func requiring Read type
         let mut cursor = Cursor::new(bytes);
+        // determines until which position the byte array is still valid / not malformed
+        let mut good_len: u64 = 0;
 
         loop {
+            let pos_before = cursor.position();
             match decode_record(&mut cursor) {
-                Ok(Some(cmd)) => apply_to_store(store, cmd), 
+                Ok(Some(cmd)) => {
+                    apply_to_store(store, cmd);
+                    good_len = cursor.position();
+                } 
                 Ok(None) => break, 
-                Err(WalError::ChecksumMismatch) | Err(WalError::UnexpectedEof) => break, 
-                Err(WalError::UnknownCommandByte(b)) => {
-                    eprintln!("Unknown command {b} in log, stopping replay");
-                    break;
-                }
-                Err(WalError::Io(e)) => return Err(e), 
-                Err(WalError::InvalidUtf8) => {
-                    eprintln!("Invalid UTF-8 in log, stopping replay");
-                    break;
+                Err(e) => {
+                    good_len = pos_before;
+                    match e {
+                        WalError::ChecksumMismatch | WalError::UnexpectedEof => {
+                            eprintln!("Malformed command in log, stopping replay at position {good_len}");
+                            break;
+                        }
+                        WalError::UnknownCommandByte(b) => {
+                            eprintln!("Unknown command {b} in log, stopping replay at position {good_len}");
+                            break;
+                        }
+                        WalError::Io(e) => return Err(e), 
+                        WalError::InvalidUtf8 => {
+                            eprintln!("Invalid UTF-8 in log, stopping replay at position {good_len}");
+                            break;
+                        }
+                    }
                 }
             }
         }
-        Ok(())
+        Ok(good_len)
     }
 }
 
