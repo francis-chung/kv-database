@@ -25,7 +25,7 @@ impl WriteAheadLog {
         Ok(WriteAheadLog { writer: BufWriter::new(file) })
     }
     
-    async fn buffered_log(&mut self, record: &[u8]) -> io::Result<()> {
+    pub async fn buffered_log(&mut self, record: &[u8]) -> io::Result<()> {
         self.writer.write_all(record).await?;
         self.writer.flush().await?;
         Ok(())

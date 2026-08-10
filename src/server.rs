@@ -1,10 +1,12 @@
 use std::{
-    sync::{Arc, Mutex},
-    error::Error
+    sync::Arc,
+    error::Error, 
+    io,
 };
 use tokio::{
     net::{TcpListener, TcpStream}, 
-    io::{AsyncBufReadExt, BufReader, AsyncWriteExt}
+    io::{AsyncBufReadExt, BufReader, AsyncWriteExt}, 
+    sync::Mutex,
 };
 
 use crate::engine::Engine;
@@ -87,7 +89,10 @@ async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> Result<(),
         let result = parse_command(&trimmed);
         let response = match result {
             Ok(cmd) => {
-                dispatch(cmd, engine.clone())
+                match dispatch(cmd, engine.clone()).await {
+                    Ok(resp) => resp, 
+                    Err(e) => format!("ERR {e}\n")
+                }
             }
             Err(ProtocolError::Empty) => {
                 "ERR empty input\n".to_string()
@@ -116,57 +121,62 @@ async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> Result<(),
     Ok(())
 }
 
-fn dispatch(cmd: Command, engine: MutexEngine) -> String {
-    // TODO: let bytes = encode_record(&cmd);
+async fn dispatch(cmd: Command, engine: MutexEngine) -> io::Result<String> {
     match cmd {
         Command::Get { key } => {
-            let mut eng = engine.lock().unwrap();
+            let mut eng = engine.lock().await;
             match eng.store.kv_store.get(&key) {
-                Some(value) => format!("VALUE {value}\n"), 
-                None => "NIL\n".to_string()
+                Some(value) => Ok(format!("VALUE {value}\n")), 
+                None => Ok("NIL\n".to_string())
             }
         }
         Command::Set { key, value } => {
-            engine.lock().unwrap().store.kv_store.insert(key, value);
-            "OK\n".to_string()
+            let mut eng = engine.lock().await;
+            let bytes = encode_record(&Command::Set { key: key.clone(), value: value.clone() });
+            eng.logger.buffered_log(&bytes).await?;
+            eng.store.kv_store.insert(key, value);
+            Ok("OK\n".to_string())
         }
         Command::Del { key } => {
-            engine.lock().unwrap().store.kv_store.remove(&key);
-            "OK\n".to_string()
+            let mut eng = engine.lock().await;
+            let bytes = encode_record(&Command::Del { key: key.clone() });
+            eng.logger.buffered_log(&bytes).await?;
+            eng.store.kv_store.remove(&key);
+            Ok("OK\n".to_string())
         }
         Command::Exists { key } => {
-            let mut eng = engine.lock().unwrap();
+            let mut eng = engine.lock().await;
             match eng.store.kv_store.contains_key(&key) {
-                true => "1\n".to_string(), 
-                false => "0\n".to_string()
+                true => Ok("1\n".to_string()), 
+                false => Ok("0\n".to_string())
             }
         }
         Command::DbSize => {
-            let result = engine.lock().unwrap().store.kv_store.len();
-            format!("{result}\n")
+            let result = engine.lock().await.store.kv_store.len();
+            Ok(format!("{result}\n"))
         }
         Command::Clear => {
-            engine.lock().unwrap().store.kv_store.clear();
-            "OK\n".to_string()
+            engine.lock().await.store.kv_store.clear();
+            Ok("OK\n".to_string())
         }
         Command::Zadd { key, member, score } => {
-            engine.lock().unwrap().store.sorted_sets.zadd(&key, member, score);
-            "OK\n".to_string()
+            engine.lock().await.store.sorted_sets.zadd(&key, member, score);
+            Ok("OK\n".to_string())
         }
         Command::Zscore { key, member } => {
-            let eng = engine.lock().unwrap();
+            let eng = engine.lock().await;
             match eng.store.sorted_sets.zscore(&key, &member) {
-                Some(value) => format!("VALUE {value}\n"), 
-                None => "NIL\n".to_string()
+                Some(value) => Ok(format!("VALUE {value}\n")), 
+                None => Ok("NIL\n".to_string())
             }
         }
         Command::Zrem { key, member } => {
-            engine.lock().unwrap().store.sorted_sets.zrem(&key, &member);
-            "OK\n".to_string()
+            engine.lock().await.store.sorted_sets.zrem(&key, &member);
+            Ok("OK\n".to_string())
         }
         Command::Zrange { key, from, to, with_scores } => {
             let mut response = String::new();
-            let eng = engine.lock().unwrap();
+            let eng = engine.lock().await;
             if let Some(rows) = eng.store.sorted_sets.zrange(&key, from, to, with_scores) {
                 for (index, (key, poss_value)) in rows.iter().enumerate() {
                     if let Some(val) = poss_value {
@@ -179,7 +189,7 @@ fn dispatch(cmd: Command, engine: MutexEngine) -> String {
             } else {
                 response = "NIL\n".to_string();
             }
-            response
+            Ok(response)
         }
     }
 }
