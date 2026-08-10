@@ -1,7 +1,5 @@
 use std::{
-    sync::Arc,
-    error::Error, 
-    io,
+    error::Error, io, net::Shutdown::Write, sync::Arc,
 };
 use tokio::{
     net::{TcpListener, TcpStream}, 
@@ -23,6 +21,7 @@ use crate::wal::{
 };
 
 const ADDRESS: &str = "127.0.0.1:7878";
+const LOG_PATH: &str = "files/log.txt";
 
 type MutexEngine = Arc<Mutex<Engine>>;
 
@@ -37,12 +36,18 @@ pub async fn start_connection() {
         }
     };
     
-    let Ok(logger) = WriteAheadLog::new("files/log.txt").await else {
+    let mut store = Db::new();
+    match WriteAheadLog::replay(LOG_PATH, &mut store) {
+        Ok(()) => (), 
+        Err(e) => eprintln!("Could not replay log: {e}")
+    };
+
+    let Ok(logger) = WriteAheadLog::new(LOG_PATH).await else {
         eprintln!("Logger failed to initialize");
         return;
     };
     let engine = Arc::new(Mutex::new(Engine {
-        store: Db::new(), 
+        store,
         logger
     }));
 

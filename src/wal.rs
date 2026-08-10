@@ -1,7 +1,8 @@
 use crate::protocol::Command;
+use crate::store::Db;
 use crc32fast::Hasher;
 use std::{
-    io::{self, Read}
+    io::{self, Read, Cursor},
 };
 use tokio::{
     fs::{File, OpenOptions}, 
@@ -29,6 +30,46 @@ impl WriteAheadLog {
         self.writer.write_all(record).await?;
         self.writer.flush().await?;
         Ok(())
+    }
+
+    pub fn replay(path: &str, store: &mut Db) -> io::Result<()> {
+        let bytes = match std::fs::read(path) {
+            Ok(b) => b, 
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(()), 
+            Err(e) => return Err(e),
+        };
+        // Cursor facilitates passing byte array into func requiring Read type
+        let mut cursor = Cursor::new(bytes);
+
+        loop {
+            match decode_record(&mut cursor) {
+                Ok(Some(cmd)) => apply_to_store(store, cmd), 
+                Ok(None) => break, 
+                Err(WalError::ChecksumMismatch) | Err(WalError::UnexpectedEof) => break, 
+                Err(WalError::UnknownCommandByte(b)) => {
+                    eprintln!("Unknown command {b} in log, stopping replay");
+                    break;
+                }
+                Err(WalError::Io(e)) => return Err(e), 
+                Err(WalError::InvalidUtf8) => {
+                    eprintln!("Invalid UTF-8 in log, stopping replay");
+                    break;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn apply_to_store(store: &mut Db, cmd: Command) {
+    match cmd {
+        Command::Set { key, value } => {
+            store.kv_store.insert(key, value);
+        }
+        Command::Del { key } => {
+            store.kv_store.remove(&key);
+        }
+        _ => eprintln!("Improper command present in log")
     }
 }
 
