@@ -3,27 +3,24 @@ use crate::store::Db;
 use crc32fast::Hasher;
 use std::{
     io::{self, Read, Cursor},
+    pin::Pin, 
+    task::{Context, Poll},
 };
 use tokio::{
     fs::{File, OpenOptions}, 
-    io::{BufWriter, AsyncWriteExt}
+    io::{BufWriter, AsyncWrite, AsyncWriteExt},
 };
 
 const CMD_SET: u8 = 1;
 const CMD_DEL: u8 = 2;
 
-pub struct WriteAheadLog {
-    writer: BufWriter<File>
+pub struct WriteAheadLog<W: AsyncWrite + Unpin> {
+    writer: BufWriter<W>
 }
 
-impl WriteAheadLog {
-    pub async fn new(path: &str) -> io::Result<Self> {
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)
-            .await?;
-        Ok(WriteAheadLog { writer: BufWriter::new(file) })
+impl<W: AsyncWrite + Unpin> WriteAheadLog<W> {
+    pub async fn new(writer: W) -> io::Result<Self> {
+        Ok(WriteAheadLog { writer: BufWriter::new(writer) })
     }
     
     // writes record to buffer, then writes to disk
@@ -31,51 +28,51 @@ impl WriteAheadLog {
         self.writer.write_all(record).await?;
         self.writer.flush().await?;
         // forces OS to write buffered content to disk before returning
-        self.writer.get_ref().sync_all().await?;
+        // self.writer.get_ref().sync_all().await?;
         Ok(())
     }
+}
 
-    pub fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
-        let bytes = match std::fs::read(path) {
-            Ok(b) => b, 
-            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
-            Err(e) => return Err(e),
-        };
-        // Cursor facilitates passing byte array into func requiring Read type
-        let mut cursor = Cursor::new(bytes);
-        // determines until which position the byte array is still valid / not malformed
-        let mut good_len: u64 = 0;
+pub fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b, 
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
+        Err(e) => return Err(e),
+    };
+    // Cursor facilitates passing byte array into func requiring Read type
+    let mut cursor = Cursor::new(bytes);
+    // determines until which position the byte array is still valid / not malformed
+    let mut good_len: u64 = 0;
 
-        loop {
-            let pos_before = cursor.position();
-            match decode_record(&mut cursor) {
-                Ok(Some(cmd)) => {
-                    apply_to_store(store, cmd);
-                    good_len = cursor.position();
-                } 
-                Ok(None) => break, 
-                Err(e) => {
-                    good_len = pos_before;
-                    match e {
-                        WalError::ChecksumMismatch | WalError::UnexpectedEof => {
-                            eprintln!("Malformed command in log, stopping replay at position {good_len}");
-                            break;
-                        }
-                        WalError::UnknownCommandByte(b) => {
-                            eprintln!("Unknown command {b} in log, stopping replay at position {good_len}");
-                            break;
-                        }
-                        WalError::Io(e) => return Err(e), 
-                        WalError::InvalidUtf8 => {
-                            eprintln!("Invalid UTF-8 in log, stopping replay at position {good_len}");
-                            break;
-                        }
+    loop {
+        let pos_before = cursor.position();
+        match decode_record(&mut cursor) {
+            Ok(Some(cmd)) => {
+                apply_to_store(store, cmd);
+                good_len = cursor.position();
+            } 
+            Ok(None) => break, 
+            Err(e) => {
+                good_len = pos_before;
+                match e {
+                    WalError::ChecksumMismatch | WalError::UnexpectedEof => {
+                        eprintln!("Malformed command in log, stopping replay at position {good_len}");
+                        break;
+                    }
+                    WalError::UnknownCommandByte(b) => {
+                        eprintln!("Unknown command {b} in log, stopping replay at position {good_len}");
+                        break;
+                    }
+                    WalError::Io(e) => return Err(e), 
+                    WalError::InvalidUtf8 => {
+                        eprintln!("Invalid UTF-8 in log, stopping replay at position {good_len}");
+                        break;
                     }
                 }
             }
         }
-        Ok(good_len)
     }
+    Ok(good_len)
 }
 
 fn apply_to_store(store: &mut Db, cmd: Command) {

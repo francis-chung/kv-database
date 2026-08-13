@@ -15,14 +15,15 @@ use crate::protocol::{
     ProtocolError
 };
 use crate::wal::{
-    encode_record, 
+    encode_record,
+    replay,  
     WriteAheadLog
 };
 
 const ADDRESS: &str = "127.0.0.1:7878";
 const LOG_PATH: &str = "src/files/log.txt";
 
-type MutexEngine = Arc<Mutex<Engine>>;
+type MutexEngine = Arc<Mutex<Engine<tokio::fs::File>>>;
 
 // begins watching the address and delegating connection handling
 pub async fn start_connection() -> io::Result<()> {
@@ -31,12 +32,20 @@ pub async fn start_connection() -> io::Result<()> {
     let mut store = Db::new();
     // replays all logs prior to starting
     // truncates log to longest well-formed prefix
-    let good_len = WriteAheadLog::replay(LOG_PATH, &mut store)?;
+    let good_len = replay(LOG_PATH, &mut store)?;
+
     let file = std::fs::OpenOptions::new().write(true).open(LOG_PATH)?;
     file.set_len(good_len)?;
+    // release std handle before reopening with async
+    drop(file);
+    let async_file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(LOG_PATH)
+        .await?;
 
     // initializes logger to continue appending to log
-    let logger = WriteAheadLog::new(LOG_PATH).await?;
+    let logger = WriteAheadLog::new(async_file).await?;
     let engine = Arc::new(Mutex::new(Engine {
         store,
         logger

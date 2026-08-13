@@ -1,7 +1,8 @@
 use crate::store::Db;
 use crate::wal::WriteAheadLog;
+use tokio::io::AsyncWrite;
 
-pub struct Engine {
+pub struct Engine<W: AsyncWrite + Unpin> {
     pub store: Db, 
-    pub logger: WriteAheadLog
+    pub logger: WriteAheadLog<W>
 }
