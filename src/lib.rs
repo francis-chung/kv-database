@@ -9,6 +9,7 @@ pub mod protocol;
 pub mod lru_cache;
 pub mod sorted_set;
 pub mod sorted_set_store;
+pub mod wal;
 
 // sender is the sending end of mpsc
 // wrapped in Option to facilitate dropping, which closes the channel
