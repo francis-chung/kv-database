@@ -15,7 +15,7 @@ const CMD_SET: u8 = 1;
 const CMD_DEL: u8 = 2;
 
 pub struct WriteAheadLog<W: AsyncWrite + Unpin> {
-    writer: BufWriter<W>
+    pub writer: BufWriter<W>
 }
 
 impl<W: AsyncWrite + Unpin> WriteAheadLog<W> {
@@ -33,12 +33,7 @@ impl<W: AsyncWrite + Unpin> WriteAheadLog<W> {
     }
 }
 
-pub fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
-    let bytes = match std::fs::read(path) {
-        Ok(b) => b, 
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
-        Err(e) => return Err(e),
-    };
+pub fn replay_from_bytes(bytes: &[u8], store: &mut Db) -> io::Result<u64> {
     // Cursor facilitates passing byte array into func requiring Read type
     let mut cursor = Cursor::new(bytes);
     // determines until which position the byte array is still valid / not malformed
@@ -73,6 +68,15 @@ pub fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
         }
     }
     Ok(good_len)
+}
+
+pub fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b, 
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
+        Err(e) => return Err(e),
+    };
+    replay_from_bytes(&bytes, store)
 }
 
 fn apply_to_store(store: &mut Db, cmd: Command) {
