@@ -3,11 +3,8 @@ use crate::store::Db;
 use crc32fast::Hasher;
 use std::{
     io::{self, Read, Cursor},
-    pin::Pin, 
-    task::{Context, Poll},
 };
 use tokio::{
-    fs::{File, OpenOptions}, 
     io::{BufWriter, AsyncWrite, AsyncWriteExt},
 };
 
