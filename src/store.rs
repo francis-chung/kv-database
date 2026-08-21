@@ -41,21 +41,8 @@ where
         }
     }
 
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            map: HashMap::with_capacity(capacity),
-            cache: LRUCache::<K, V>::new(LRU_CAPACITY),
-            hits: 0,
-            misses: 0,
-        }
-    }
-
     pub fn len(&self) -> usize {
         self.map.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.map.is_empty()
     }
 
     pub fn get(&mut self, key: &K) -> Option<V> {
@@ -75,10 +62,6 @@ where
                 None
             }
         }
-    }
-
-    pub fn get_multiple(&mut self, keys: &[K]) -> Vec<Option<V>> {
-        keys.iter().map(|key| self.get(key)).collect()
     }
 
     pub fn contains_key(&mut self, key: &K) -> bool {
@@ -104,25 +87,6 @@ where
         self.map.insert(key, value)
     }
 
-    pub fn insert_multiple(&mut self, pairs: Vec<(K, V)>) {
-        self.map.extend(pairs);
-    }
-
-    // FnOnce: a function executed exactly once in this update function
-    pub fn update<F>(&mut self, key: &K, f: F) -> bool
-    where
-        F: FnOnce(&mut V),
-    {
-        if let Some(value) = self.map.get_mut(key) {
-            self.hits += 1;
-            f(value);
-            true
-        } else {
-            self.misses += 1;
-            false
-        }
-    }
-
     pub fn remove(&mut self, key: &K) -> Option<V> {
         self.cache.del(key);
         self.map.remove(key)
@@ -130,17 +94,6 @@ where
 
     pub fn clear(&mut self) {
         self.map.clear()
-    }
-
-    // impl... return type shows characteristics of type without
-    // defining exactly what it is (especially when true
-    // type signature is verbose)
-    pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.map.keys()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
-        self.map.iter()
     }
 }
 
