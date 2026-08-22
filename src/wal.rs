@@ -1,6 +1,7 @@
 use crate::protocol::Command;
 use crate::store::Db;
 use crc32fast::Hasher;
+use ordered_float::OrderedFloat;
 use std::{
     io::{self, Read, Cursor},
 };
@@ -10,6 +11,8 @@ use tokio::{
 
 const CMD_SET: u8 = 1;
 const CMD_DEL: u8 = 2;
+const CMD_ZADD: u8 = 3;
+const CMD_ZREM: u8 = 4;
 
 pub struct WriteAheadLog<W: AsyncWrite + Unpin> {
     pub writer: BufWriter<W>
@@ -105,7 +108,8 @@ impl From<io::Error> for WalError {
 
 // WAL record is checksummed and self-delimiting
 // format: [checksum: u32][record_len: u32][cmd_type: u8]...
-// [key_len: u32][key_bytes][val_len: u32][val_bytes]
+// SET, DEL: [key_len: u32][key_bytes][val_len: u32][val_bytes]
+// ZADD, ZREM: [key_len: u32][key_bytes][member_len: u32][member_bytes][score: f64]
 // uses little-endianness
 pub fn encode_record(cmd: &Command) -> Vec<u8> {
     let mut body = Vec::new();
@@ -119,6 +123,17 @@ pub fn encode_record(cmd: &Command) -> Vec<u8> {
         Command::Del { key } => {
             body.push(CMD_DEL);
             write_bytes_with_len(&mut body, key.as_bytes());
+        }
+        Command::Zadd { key, member, score } => {
+            body.push(CMD_ZADD);
+            write_bytes_with_len(&mut body, key.as_bytes());
+            write_bytes_with_len(&mut body, member.as_bytes());
+            body.extend_from_slice(&score.0.to_le_bytes());
+        }
+        Command::Zrem { key, member } => {
+            body.push(CMD_ZREM);
+            write_bytes_with_len(&mut body, key.as_bytes());
+            write_bytes_with_len(&mut body, member.as_bytes());
         }
         _ => panic!("Command not loggable in WAL") // TODO: handle error execution properly
     }
@@ -176,6 +191,17 @@ pub fn decode_record<R: Read>(reader: &mut R) -> Result<Option<Command>, WalErro
             let key = read_string(&mut cursor)?;
             Command::Del { key }
         }
+        CMD_ZADD => {
+            let key = read_string(&mut cursor)?;
+            let member = read_string(&mut cursor)?;
+            let score = OrderedFloat(read_float(&mut cursor)?);
+            Command::Zadd { key, member, score }
+        }
+        CMD_ZREM => {
+            let key = read_string(&mut cursor)?;
+            let member = read_string(&mut cursor)?;
+            Command::Zrem { key, member }
+        }
         other => return Err(WalError::UnknownCommandByte(other))
     };
     Ok(Some(cmd))
@@ -188,7 +214,17 @@ fn read_u8(cursor: &mut &[u8]) -> Result<u8, WalError> {
     Ok(b)
 }
 
-// same as read_u8 but reads 4 bytes
+// same as read_u8 but reads 8 bytes for a float
+fn read_float(cursor: &mut &[u8]) -> Result<f64, WalError> {
+    if cursor.len() < 8 {
+        return Err(WalError::UnexpectedEof);
+    }
+    let f = f64::from_le_bytes(cursor[..8].try_into().unwrap());
+    *cursor = &cursor[8..];
+    Ok(f)
+}
+
+// same as read_u8 but reads 4 bytes for a string
 fn read_string(cursor: &mut &[u8]) -> Result<String, WalError> {
     if cursor.len() < 4 {
         return Err(WalError::UnexpectedEof);
