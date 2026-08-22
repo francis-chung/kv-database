@@ -165,7 +165,10 @@ async fn dispatch(cmd: Command, engine: MutexEngine) -> io::Result<String> {
             Ok("OK\n".to_string())
         }
         Command::Zadd { key, member, score } => {
-            engine.lock().await.store.sorted_sets.zadd(&key, member, score);
+            let mut eng = engine.lock().await;
+            let bytes = encode_record(&Command::Zadd { key: key.clone(), member: member.clone(), score });
+            eng.logger.buffered_log(&bytes).await?;
+            eng.store.sorted_sets.zadd(&key, member, score);
             Ok("OK\n".to_string())
         }
         Command::Zscore { key, member } => {
@@ -176,7 +179,10 @@ async fn dispatch(cmd: Command, engine: MutexEngine) -> io::Result<String> {
             }
         }
         Command::Zrem { key, member } => {
-            engine.lock().await.store.sorted_sets.zrem(&key, &member);
+            let mut eng = engine.lock().await;
+            let bytes = encode_record(&Command::Zrem { key: key.clone(), member: member.clone() });
+            eng.logger.buffered_log(&bytes).await?;
+            eng.store.sorted_sets.zrem(&key, &member);
             Ok("OK\n".to_string())
         }
         Command::Zrange { key, from, to, with_scores } => {
