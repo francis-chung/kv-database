@@ -87,6 +87,12 @@ fn apply_to_store(store: &mut Db, cmd: Command) {
         Command::Del { key } => {
             store.kv_store.remove(&key);
         }
+        Command::Zadd { key, member, score } => {
+            store.sorted_sets.zadd(&key, member, score);
+        }
+        Command::Zrem { key, member } => {
+            store.sorted_sets.zrem(&key, &member);
+        }
         _ => eprintln!("Improper command present in log")
     }
 }
