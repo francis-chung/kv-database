@@ -1,13 +1,14 @@
 use std::io;
 
-mod protocol;
+// public API from our library
+use kv_database::protocol;
+use kv_database::store;
+use kv_database::wal;
+
+// private modules only used by this binary
 mod server;
 mod engine;
-mod store;
-mod lru_cache;
-mod sorted_set;
-mod sorted_set_store;
-mod wal;
+mod snapshot;
 
 #[tokio::main]
 pub async fn main() -> io::Result<()> {
