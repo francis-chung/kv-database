@@ -1,8 +1,11 @@
-use crate::store::Db;
 use crc32fast::Hasher;
 use std::io::{self, Write, Read, Cursor};
+use std::fs;
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
+
+use crate::store::Db;
+use crate::wal::write_bytes_with_len;
 
 // prefix to verify this is supposed to be a snapshot
 const SNAPSHOT_MAGIC: u32 = 0x534E4150;
@@ -50,4 +53,18 @@ pub async fn write_snapshot(db: &Db, wal_position: u64, path: &str) -> io::Resul
     file.write_all(&buf).await?;
     file.sync_all().await?;
     Ok(())
+}
+
+pub fn load_snapshot_from_bytes(bytes: &[u8], db: &mut Db) -> io::Result<u64> {
+    // TODO
+    Ok(0)
+}
+
+pub fn load_snapshot(path: &str, db: &mut Db) -> io::Result<u64> {
+    let bytes = match std::fs::read(path) {
+        Ok(b) => b, 
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
+        Err(e) => return Err(e)
+    };
+    load_snapshot_from_bytes(&bytes, db)
 }

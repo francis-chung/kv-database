@@ -21,7 +21,7 @@ impl Db {
 }
 
 pub struct HashMapWrapper<K, V> {
-    map: HashMap<K, V>,
+    pub map: HashMap<K, V>,
     cache: LRUCache<K, V>,
     hits: usize,
     misses: usize,

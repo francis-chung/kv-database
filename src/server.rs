@@ -19,6 +19,7 @@ use crate::wal::{
     replay,  
     WriteAheadLog
 };
+use crate::snapshot::load_snapshot;
 
 const ADDRESS: &str = "127.0.0.1:7878";
 const LOG_PATH: &str = "src/files/log.txt";
@@ -30,6 +31,9 @@ pub async fn start_connection() -> io::Result<()> {
     let listener = TcpListener::bind(ADDRESS).await?;
     
     let mut store = Db::new();
+
+    
+
     // replays all logs prior to starting
     // truncates log to longest well-formed prefix
     let good_len = replay(LOG_PATH, &mut store)?;
