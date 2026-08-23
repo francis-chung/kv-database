@@ -156,7 +156,7 @@ pub fn encode_record(cmd: &Command) -> Vec<u8> {
 }
 
 // adds char slice into vector buffer in WAL record format
-fn write_bytes_with_len(buf: &mut Vec<u8>, data: &[u8]) {
+pub fn write_bytes_with_len(buf: &mut Vec<u8>, data: &[u8]) {
     buf.extend_from_slice(&(data.len() as u32).to_le_bytes());
     buf.extend_from_slice(data);
 }

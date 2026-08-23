@@ -36,6 +36,10 @@ where
         self.key_to_pos.is_empty()
     }
 
+    pub fn len(&self) -> usize {
+        self.key_to_pos.len()
+    }
+
     pub fn get(&self, key: &K) -> Option<&V> {
         let pos = *self.key_to_pos.get(key)?;
         Some(&self.nodes[pos].score)
@@ -193,7 +197,7 @@ where
         let mut list: Vec<(K, Option<V>)> = Vec::new();
         for _ in 0..=(to - from) {
             current = match current {
-                Some(current_pos) => self.nodes[current_pos].forward[0], 
+                Some(current_pos) => self.nodes[current_pos].forward[0],
                 None => self.head[0]
             };
             let val = if with_scores {
@@ -202,6 +206,17 @@ where
                 None
             };
             list.push((self.nodes[current.unwrap()].key.clone(), val));
+        }
+        list
+    }
+
+    pub fn iter_all(&self) -> Vec<(K, V)> {
+        if self.key_to_pos.is_empty() { return Vec::new() }
+        let mut current = self.head[0];
+        let mut list = Vec::with_capacity(self.key_to_pos.len());
+        while let Some(pos) = current {
+            list.push((self.nodes[pos].key.clone(), self.nodes[pos].score.clone()));
+            current = self.nodes[pos].forward[0];
         }
         list
     }
