@@ -48,5 +48,6 @@ pub async fn write_snapshot(db: &Db, wal_position: u64, path: &str) -> io::Resul
     buf.extend_from_slice(&checksum.to_le_bytes());
 
     file.write_all(&buf).await?;
+    file.sync_all().await?;
     Ok(())
 }
