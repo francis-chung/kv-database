@@ -1,16 +1,35 @@
 use crc32fast::Hasher;
+use ordered_float::OrderedFloat;
+use kv_database::protocol::ProtocolError::InvalidUtf8;
+use kv_database::wal::WalError::{self, ChecksumMismatch, UnexpectedEof, UnknownCommandByte};
 use std::io::{self, Write, Read, Cursor};
 use std::fs;
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
 
 use crate::store::Db;
-use crate::wal::write_bytes_with_len;
+use crate::wal::{write_bytes_with_len, read_string, read_float};
 
 // prefix to verify this is supposed to be a snapshot
 const SNAPSHOT_MAGIC: u32 = 0x534E4150;
 // version for potential future modifications to format
 const SNAPSHOT_VERSION: u32 = 1;
+
+pub enum SnapshotError {
+    Io(io::Error), 
+    InvalidSnapshot, 
+    UnexpectedEof,
+}
+
+impl From<WalError> for SnapshotError {
+    fn from(error: WalError) -> Self {
+        match error {
+            Io(e) => SnapshotError::Io(e), 
+            UnexpectedEof => SnapshotError::UnexpectedEof, 
+            _ => SnapshotError::InvalidSnapshot, // the other cases won't happen so i'm putting them here now
+        }
+    }
+}
 
 pub async fn write_snapshot(db: &Db, wal_position: u64, path: &str) -> io::Result<()> {
     let mut file = File::create(path).await?;
@@ -55,16 +74,54 @@ pub async fn write_snapshot(db: &Db, wal_position: u64, path: &str) -> io::Resul
     Ok(())
 }
 
-pub fn load_snapshot_from_bytes(bytes: &[u8], db: &mut Db) -> io::Result<u64> {
-    // TODO
-    Ok(0)
-}
-
-pub fn load_snapshot(path: &str, db: &mut Db) -> io::Result<u64> {
+pub fn load_snapshot(path: &str, db: &mut Db) -> Result<u64, SnapshotError> {
     let bytes = match std::fs::read(path) {
         Ok(b) => b, 
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
-        Err(e) => return Err(e)
+        Err(e) => return Err(Io(io::Error)) // FIX
     };
     load_snapshot_from_bytes(&bytes, db)
+}
+
+pub fn load_snapshot_from_bytes(bytes: &[u8], db: &mut Db) -> Result<u64, SnapshotError> {
+    // let mut cursor = Cursor::new(bytes);
+    let cursor = &mut &bytes[..];
+    let magic = read_u32(cursor)?;
+    if magic != SNAPSHOT_MAGIC {
+        return Err(SnapshotError::InvalidSnapshot);
+    }
+    let version = read_u32(cursor)?;
+    if version != SNAPSHOT_VERSION {
+        return Err(SnapshotError::InvalidSnapshot);
+    }
+    let _timestamp = read_u32(cursor)?;
+    
+    let kv_count = read_u32(cursor)?;
+    for _ in 0..kv_count {
+        let key = read_string(cursor)?;
+        let val = read_string(cursor)?;
+        db.kv_store.insert(key, val);
+    }
+    let ss_count = read_u32(cursor)?;
+    let mut ss_total_count: u64 = 0;
+    for _ in 0..ss_count {
+        let key = read_string(cursor)?;
+        let member_count = read_u32(cursor)?;
+        ss_total_count += member_count as u64;
+        for _ in 0..member_count {
+            let member = read_string(cursor)?;
+            let score = OrderedFloat(read_float(cursor)?);
+            db.sorted_sets.zadd(&key, member, score);
+        }
+    }
+    Ok((kv_count as u64) + ss_total_count) // TO CHANGE
+}
+
+fn read_u32(cursor: &mut &[u8]) -> Result<u32, SnapshotError> {
+    if cursor.len() < 4 {
+        return Err(SnapshotError::UnexpectedEof);
+    }
+    let res = u32::from_le_bytes(cursor[..4].try_into().unwrap());
+    *cursor = &cursor[4..];
+    Ok(res)
 }

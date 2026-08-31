@@ -79,7 +79,7 @@ pub fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
     replay_from_bytes(&bytes, store)
 }
 
-fn apply_to_store(store: &mut Db, cmd: Command) {
+pub fn apply_to_store(store: &mut Db, cmd: Command) {
     match cmd {
         Command::Set { key, value } => {
             store.kv_store.insert(key, value);
@@ -221,7 +221,7 @@ fn read_u8(cursor: &mut &[u8]) -> Result<u8, WalError> {
 }
 
 // same as read_u8 but reads 8 bytes for a float
-fn read_float(cursor: &mut &[u8]) -> Result<f64, WalError> {
+pub fn read_float(cursor: &mut &[u8]) -> Result<f64, WalError> {
     if cursor.len() < 8 {
         return Err(WalError::UnexpectedEof);
     }
@@ -231,7 +231,7 @@ fn read_float(cursor: &mut &[u8]) -> Result<f64, WalError> {
 }
 
 // same as read_u8 but reads 4 bytes for a string
-fn read_string(cursor: &mut &[u8]) -> Result<String, WalError> {
+pub fn read_string(cursor: &mut &[u8]) -> Result<String, WalError> {
     if cursor.len() < 4 {
         return Err(WalError::UnexpectedEof);
     }
