@@ -70,8 +70,8 @@ pub fn replay_from_bytes(bytes: &[u8], store: &mut Db) -> io::Result<u64> {
     Ok(good_len)
 }
 
-pub fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
-    let bytes = match std::fs::read(path) {
+pub async fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
+    let bytes = match tokio::fs::read(path).await {
         Ok(b) => b, 
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
         Err(e) => return Err(e),

@@ -23,6 +23,7 @@ use crate::snapshot::load_snapshot;
 
 const ADDRESS: &str = "127.0.0.1:7878";
 const LOG_PATH: &str = "src/files/log.txt";
+const SNAPSHOT_PATH: &str = "src/files/snapshot.txt";
 
 type MutexEngine = Arc<Mutex<Engine<tokio::fs::File>>>;
 
@@ -32,11 +33,10 @@ pub async fn start_connection() -> io::Result<()> {
     
     let mut store = Db::new();
 
-    
 
     // replays all logs prior to starting
     // truncates log to longest well-formed prefix
-    let good_len = replay(LOG_PATH, &mut store)?;
+    let good_len = replay(LOG_PATH, &mut store).await?;
 
     let file = std::fs::OpenOptions::new().write(true).open(LOG_PATH)?;
     file.set_len(good_len)?;

@@ -75,8 +75,8 @@ pub async fn write_snapshot(db: &Db, wal_position: u64, path: &str) -> io::Resul
     Ok(())
 }
 
-pub fn load_snapshot(path: &str, db: &mut Db) -> Result<u64, SnapshotError> {
-    let bytes = match std::fs::read(path) {
+pub async fn load_snapshot(path: &str, db: &mut Db) -> Result<u64, SnapshotError> {
+    let bytes = match tokio::fs::read(path).await {
         Ok(b) => b, 
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
         Err(e) => return Err(SnapshotError::Io(e)) // FIX
