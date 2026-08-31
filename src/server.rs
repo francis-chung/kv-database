@@ -7,7 +7,7 @@ use tokio::{
     sync::Mutex,
 };
 
-use crate::engine::Engine;
+use crate::{engine::Engine, snapshot::SnapshotError};
 use crate::store::Db;
 use crate::protocol::{
     parse_command, 
@@ -27,12 +27,27 @@ const SNAPSHOT_PATH: &str = "src/files/snapshot.txt";
 
 type MutexEngine = Arc<Mutex<Engine<tokio::fs::File>>>;
 
+impl From<SnapshotError> for io::Error {
+    fn from(error: SnapshotError) -> Self {
+        match error {
+            SnapshotError::Io(e) => e, 
+            SnapshotError::InvalidSnapshot => {
+                io::Error::new(io::ErrorKind::InvalidData, "Invalid snapshot format")
+            }
+            SnapshotError::UnexpectedEof => {
+                io::Error::new(io::ErrorKind::UnexpectedEof, "Unexpected EOF in snapshot")
+            }
+        }
+    }
+}
+
 // begins watching the address and delegating connection handling
 pub async fn start_connection() -> io::Result<()> {
     let listener = TcpListener::bind(ADDRESS).await?;
     
     let mut store = Db::new();
 
+    let snapshot_wal_pos = load_snapshot(SNAPSHOT_PATH, &mut store).await?;
 
     // replays all logs prior to starting
     // truncates log to longest well-formed prefix
