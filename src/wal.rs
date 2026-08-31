@@ -70,12 +70,13 @@ pub fn replay_from_bytes(bytes: &[u8], store: &mut Db) -> io::Result<u64> {
     Ok(good_len)
 }
 
-pub async fn replay(path: &str, store: &mut Db) -> io::Result<u64> {
-    let bytes = match tokio::fs::read(path).await {
+pub async fn replay_from_position(path: &str, pos: u64, store: &mut Db) -> io::Result<u64> {
+    let mut bytes = match tokio::fs::read(path).await {
         Ok(b) => b, 
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
         Err(e) => return Err(e),
     };
+    bytes = bytes[pos as usize..].to_vec();
     replay_from_bytes(&bytes, store)
 }
 
