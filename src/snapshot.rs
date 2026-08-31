@@ -24,8 +24,8 @@ pub enum SnapshotError {
 impl From<WalError> for SnapshotError {
     fn from(error: WalError) -> Self {
         match error {
-            Io(e) => SnapshotError::Io(e), 
-            UnexpectedEof => SnapshotError::UnexpectedEof, 
+            WalError::Io(e) => SnapshotError::Io(e), 
+            WalError::UnexpectedEof => SnapshotError::UnexpectedEof, 
             _ => SnapshotError::InvalidSnapshot, // the other cases won't happen so i'm putting them here now
         }
     }
@@ -78,7 +78,7 @@ pub fn load_snapshot(path: &str, db: &mut Db) -> Result<u64, SnapshotError> {
     let bytes = match std::fs::read(path) {
         Ok(b) => b, 
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0), 
-        Err(e) => return Err(Io(io::Error)) // FIX
+        Err(e) => return Err(SnapshotError::Io(e)) // FIX
     };
     load_snapshot_from_bytes(&bytes, db)
 }
