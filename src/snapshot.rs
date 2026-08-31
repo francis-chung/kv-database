@@ -15,6 +15,7 @@ const SNAPSHOT_MAGIC: u32 = 0x534E4150;
 // version for potential future modifications to format
 const SNAPSHOT_VERSION: u32 = 1;
 
+#[derive(Debug)]
 pub enum SnapshotError {
     Io(io::Error), 
     InvalidSnapshot, 
@@ -84,37 +85,48 @@ pub fn load_snapshot(path: &str, db: &mut Db) -> Result<u64, SnapshotError> {
 }
 
 pub fn load_snapshot_from_bytes(bytes: &[u8], db: &mut Db) -> Result<u64, SnapshotError> {
-    // let mut cursor = Cursor::new(bytes);
+    let total_len = bytes.len();
     let cursor = &mut &bytes[..];
-    let magic = read_u32(cursor)?;
-    if magic != SNAPSHOT_MAGIC {
-        return Err(SnapshotError::InvalidSnapshot);
-    }
-    let version = read_u32(cursor)?;
-    if version != SNAPSHOT_VERSION {
-        return Err(SnapshotError::InvalidSnapshot);
-    }
-    let _timestamp = read_u32(cursor)?;
+
+    // allows for returning errors earlier without losing snapshot length
+    let result: Result<(), SnapshotError> = (|| {
+        let magic = read_u32(cursor)?;
+        if magic != SNAPSHOT_MAGIC {
+            return Err(SnapshotError::InvalidSnapshot);
+        }
+        let version = read_u32(cursor)?;
+        if version != SNAPSHOT_VERSION {
+            return Err(SnapshotError::InvalidSnapshot);
+        }
+        let _timestamp = read_u32(cursor)?;
+        
+        let kv_cnt = read_u32(cursor)?;
+        for _ in 0..kv_cnt {
+            let key = read_string(cursor)?;
+            let val = read_string(cursor)?;
+            db.kv_store.insert(key, val);
+        }
+        let ss_cnt = read_u32(cursor)?;
+        for _ in 0..ss_cnt {
+            let key = read_string(cursor)?;
+            let member_count = read_u32(cursor)?;
+            for _ in 0..member_count {
+                let member = read_string(cursor)?;
+                let score = OrderedFloat(read_float(cursor)?);
+                db.sorted_sets.zadd(&key, member, score);
+            }
+        }
+        Ok(())
+    })();
     
-    let kv_count = read_u32(cursor)?;
-    for _ in 0..kv_count {
-        let key = read_string(cursor)?;
-        let val = read_string(cursor)?;
-        db.kv_store.insert(key, val);
-    }
-    let ss_count = read_u32(cursor)?;
-    let mut ss_total_count: u64 = 0;
-    for _ in 0..ss_count {
-        let key = read_string(cursor)?;
-        let member_count = read_u32(cursor)?;
-        ss_total_count += member_count as u64;
-        for _ in 0..member_count {
-            let member = read_string(cursor)?;
-            let score = OrderedFloat(read_float(cursor)?);
-            db.sorted_sets.zadd(&key, member, score);
+    let bytes_processed = (total_len - cursor.len()) as u64;
+    match result {
+        Ok(()) => Ok(bytes_processed), 
+        Err(e) => {
+            eprintln!("Snapshot load failed after {bytes_processed} bytes: {e:?}");
+            Err(e)
         }
     }
-    Ok((kv_count as u64) + ss_total_count) // TO CHANGE
 }
 
 fn read_u32(cursor: &mut &[u8]) -> Result<u32, SnapshotError> {
