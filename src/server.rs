@@ -1,5 +1,6 @@
 use std::{
     error::Error, io, sync::Arc,
+    time::Duration,
 };
 use tokio::{
     net::{TcpListener, TcpStream}, 
@@ -7,7 +8,7 @@ use tokio::{
     sync::Mutex,
 };
 
-use crate::{engine::Engine, snapshot::SnapshotError};
+use crate::{engine::Engine, snapshot::{SnapshotError, write_snapshot}};
 use crate::store::Db;
 use crate::protocol::{
     parse_command, 
@@ -16,7 +17,8 @@ use crate::protocol::{
 };
 use crate::wal::{
     encode_record,
-    replay_from_position,  
+    replay_from_position,
+    truncate_wal,
     WriteAheadLog
 };
 use crate::snapshot::load_snapshot;
@@ -221,5 +223,15 @@ async fn dispatch(cmd: Command, engine: MutexEngine) -> io::Result<String> {
             }
             Ok(response)
         }
+    }
+}
+
+async fn periodic_snapshot(db: &Db, snapshot_path: &str, wal_path: &str) -> io::Result<()> {
+    let temp_ss_path = snapshot_path.replace(".txt", ".tmp");
+    loop {
+        tokio::time::sleep(Duration::from_secs(60)).await;
+        write_snapshot(db, &temp_ss_path).await?;
+        std::fs::rename(&temp_ss_path, &snapshot_path)?;
+        truncate_wal(wal_path).await?;
     }
 }

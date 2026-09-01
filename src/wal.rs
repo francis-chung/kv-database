@@ -7,6 +7,7 @@ use std::{
 };
 use tokio::{
     io::{BufWriter, AsyncWrite, AsyncWriteExt},
+    fs::File,
 };
 
 const CMD_SET: u8 = 1;
@@ -248,4 +249,14 @@ pub fn read_string(cursor: &mut &[u8]) -> Result<String, WalError> {
     let s = String::from_utf8(cursor[..len].to_vec()).map_err(|_| WalError::InvalidUtf8)?;
     *cursor = &cursor[len..];
     Ok(s)
+}
+
+pub async fn truncate_wal(wal_path: &str) -> io::Result<()> {
+    let temp_wal_path = wal_path.replace(".txt", ".tmp");
+    let mut file = File::create(temp_wal_path.clone()).await?;
+    let empty_string = [0u8; 0];
+    file.write_all(&empty_string).await?;
+    file.sync_all().await?;
+    std::fs::rename(&temp_wal_path, &wal_path)?;
+    Ok(())
 }
