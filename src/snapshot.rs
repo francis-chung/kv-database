@@ -32,15 +32,14 @@ impl From<WalError> for SnapshotError {
     }
 }
 
-pub async fn write_snapshot(db: &Db, wal_position: u64, path: &str) -> io::Result<()> {
+pub async fn write_snapshot(db: &Db, path: &str) -> io::Result<()> {
     let mut file = File::create(path).await?;
     let mut buf = Vec::new();
 
     // header with some metadata
     buf.extend_from_slice(&SNAPSHOT_MAGIC.to_le_bytes());
     buf.extend_from_slice(&SNAPSHOT_VERSION.to_le_bytes());
-    buf.extend_from_slice(&chrono::Utc::now().timestamp_millis().to_le_bytes());
-    buf.extend_from_slice(&wal_position.to_le_bytes());
+    buf.extend_from_slice(&(chrono::Utc::now().timestamp_millis() as u64).to_le_bytes());
 
     // key-value database and sorted sets adhere to files/snapshot.bin format
     let kv_count = db.kv_store.map.len() as u32;
