@@ -1,11 +1,9 @@
 use crc32fast::Hasher;
 use ordered_float::OrderedFloat;
-use kv_database::protocol::ProtocolError::InvalidUtf8;
-use kv_database::wal::WalError::{self, ChecksumMismatch, UnexpectedEof, UnknownCommandByte};
-use std::io::{self, Write, Read, Cursor};
-use std::fs;
+use kv_database::wal::WalError;
+use std::io;
 use tokio::fs::File;
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
+use tokio::io::AsyncWriteExt;
 
 use crate::store::Db;
 use crate::wal::{write_bytes_with_len, read_string, read_float};
