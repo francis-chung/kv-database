@@ -72,6 +72,9 @@ pub async fn start_connection() -> io::Result<()> {
         logger
     }));
 
+    // begin snapshotting loop
+    periodic_snapshot(Arc::clone(&engine), SNAPSHOT_PATH, LOG_PATH).await?;
+
     loop {
         let (stream, _) = match listener.accept().await {
             Ok(s) => s,
@@ -226,11 +229,12 @@ async fn dispatch(cmd: Command, engine: MutexEngine) -> io::Result<String> {
     }
 }
 
-async fn periodic_snapshot(db: &Db, snapshot_path: &str, wal_path: &str) -> io::Result<()> {
+async fn periodic_snapshot(engine: MutexEngine, snapshot_path: &str, wal_path: &str) -> io::Result<()> {
     let temp_ss_path = snapshot_path.replace(".txt", ".tmp");
     loop {
         tokio::time::sleep(Duration::from_secs(60)).await;
-        write_snapshot(db, &temp_ss_path).await?;
+        let cloned_engine = Arc::clone(&engine);
+        write_snapshot(&cloned_engine.lock().await.store, &temp_ss_path).await?;
         std::fs::rename(&temp_ss_path, &snapshot_path)?;
         truncate_wal(wal_path).await?;
     }
