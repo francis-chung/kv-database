@@ -72,8 +72,13 @@ pub async fn start_connection() -> io::Result<()> {
         logger
     }));
 
-    // begin snapshotting loop
-    periodic_snapshot(Arc::clone(&engine), SNAPSHOT_PATH, LOG_PATH).await?;
+    // begin snapshotting loop asynchronously
+    let cloned_engine = Arc::clone(&engine);
+    tokio::spawn(async move {
+        if let Err(e) = periodic_snapshot(cloned_engine, SNAPSHOT_PATH, LOG_PATH).await {
+            eprintln!("Periodic snapshot failed: {e:?}");
+        }
+    });
 
     loop {
         let (stream, _) = match listener.accept().await {
@@ -85,9 +90,9 @@ pub async fn start_connection() -> io::Result<()> {
         };
 
         let cloned_engine = Arc::clone(&engine);
-        let _ = tokio::spawn(async move {
+        tokio::spawn(async move {
             if let Err(e) = handle_connection(stream, cloned_engine).await {
-                eprintln!("Failed to handle connection: {e}");
+                eprintln!("Failed to handle connection: {e:?}");
             }
         });
     }
