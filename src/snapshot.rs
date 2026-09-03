@@ -47,10 +47,7 @@ pub async fn write_snapshot(db: &Db, path: &str) -> io::Result<()> {
         write_bytes_with_len(&mut buf, value.as_bytes());
     }
 
-    let mut ss_count: u32 = 0;
-    for (_, list) in &db.sorted_sets.sets {
-        ss_count += list.len() as u32;
-    }
+    let ss_count = db.sorted_sets.sets.len() as u32;
     buf.extend_from_slice(&ss_count.to_le_bytes());
     for (key, list) in &db.sorted_sets.sets {
         write_bytes_with_len(&mut buf, key.as_bytes());
@@ -95,7 +92,7 @@ pub fn load_snapshot_from_bytes(bytes: &[u8], db: &mut Db) -> Result<u64, Snapsh
         if version != SNAPSHOT_VERSION {
             return Err(SnapshotError::InvalidSnapshot);
         }
-        let _timestamp = read_u32(cursor)?;
+        let _timestamp = read_u64(cursor)?;
         
         let kv_cnt = read_u32(cursor)?;
         for _ in 0..kv_cnt {
@@ -132,5 +129,14 @@ fn read_u32(cursor: &mut &[u8]) -> Result<u32, SnapshotError> {
     }
     let res = u32::from_le_bytes(cursor[..4].try_into().unwrap());
     *cursor = &cursor[4..];
+    Ok(res)
+}
+
+fn read_u64(cursor: &mut &[u8]) -> Result<u64, SnapshotError> {
+    if cursor.len() < 8 {
+        return Err(SnapshotError::UnexpectedEof);
+    }
+    let res = u64::from_le_bytes(cursor[..8].try_into().unwrap());
+    *cursor = &cursor[8..];
     Ok(res)
 }

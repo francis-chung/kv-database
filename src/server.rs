@@ -17,7 +17,7 @@ use crate::protocol::{
 };
 use crate::wal::{
     encode_record,
-    replay_from_position,
+    replay,
     truncate_wal,
     WriteAheadLog
 };
@@ -49,11 +49,11 @@ pub async fn start_connection() -> io::Result<()> {
     
     let mut store = Db::new();
 
-    let snapshot_wal_pos = load_snapshot(SNAPSHOT_PATH, &mut store).await?;
+    let _snapshot_wal_pos = load_snapshot(SNAPSHOT_PATH, &mut store).await?;
     
     // replays all logs prior to starting
     // truncates log to longest well-formed prefix
-    let good_len = replay_from_position(LOG_PATH, snapshot_wal_pos, &mut store).await?;
+    let good_len = replay(LOG_PATH, &mut store).await?;
 
     let file = std::fs::OpenOptions::new().write(true).open(LOG_PATH)?;
     file.set_len(good_len)?;
