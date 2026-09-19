@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KV-Database: Lightweight Key-Value Store with Sorted Sets</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .feature {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .feature h2::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background-color: #667eea;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+
+        .terminal {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            margin: 20px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .terminal::before {
+            content: "$";
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: #4CAF50;
+            font-size: 18px;
+        }
+
+        .terminal-content {
+            margin-left: 30px;
+        }
+
+        .commands-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .commands-section h2 {
+            color: #667eea;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .command-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .command-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .command-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .command-description {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .demo-section h2 {
+            color: #667eea;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .interactive-demo {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .input-group input, .input-group select {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .output {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            min-height: 60px;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 0;
+            color: #666;
+            border-top: 1px solid #eee;
+            margin-top: 50px;
+        }
+
+        .tech-stack {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+
+        .tech-item {
+            background: #e3f2fd;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #1976d2;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .commands-section h2 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .feature, .command-card, .terminal {
+            animation: fadeIn 0.6s ease-out forwards;
+            opacity: 0;
+        }
+
+        .feature:nth-child(1) { animation-delay: 0.1s; }
+        .feature:nth-child(2) { animation-delay: 0.2s; }
+        .feature:nth-child(3) { animation-delay: 0.3s; }
+        .command-card:nth-child(1) { animation-delay: 0.1s; }
+        .command-card:nth-child(2) { animation-delay: 0.2s; }
+        .command-card:nth-child(3) { animation-delay: 0.3s; }
+        .command-card:nth-child(4) { animation-delay: 0.4s; }
+        .command-card:nth-child(5) { animation-delay: 0.5s; }
+        .command-card:nth-child(6) { animation-delay: 0.6s; }
+        .command-card:nth-child(7) { animation-delay: 0.7s; }
+        .command-card:nth-child(8) { animation-delay: 0.8s; }
+        .terminal { animation-delay: 0.9s; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>KV-Database</h1>
+        <p>A Lightweight Key-Value Store with Sorted Set Functionality</p>
+    </header>
+
+    <div class="container">
+        <!-- Demo Explanation -->
+        <section class="demo-section">
+            <h2>What is KV-Database?</h2>
+            <p>KV-Database is a high-performance, Rust-based key-value database that combines the simplicity of traditional key-value stores with the power of sorted sets. Built for developers who need fast, reliable data storage with advanced querying capabilities.</p>
+
+            <div class="tech-stack">
+                <span class="tech-item">Rust</span>
+                <span class="tech-item">Tokio Async Runtime</span>
+                <span class="tech-item">Skip Lists</span>
+                <span class="tech-item">LRU Caching</span>
+                <span class="tech-item">WAL Persistence</span>
+                <span class="tech-item">Periodic Snapshots</span>
+            </div>
+        </section>
+
+        <!-- Features Overview -->
+        <section class="features">
+            <div class="feature">
+                <h2>⚡ Blazing Fast Performance</h2>
+                <p>Built with Rust and powered by Tokio's asynchronous runtime, KV-Database delivers exceptional throughput with minimal latency. Features like LRU caching and skip lists ensure O(log n) lookup times for sorted sets.</p>
+            </div>
+
+            <div class="feature">
+                <h2>🔑 Full Key-Value Functionality</h2>
+                <p>Complete CRUD operations for string key-value pairs including GET, SET, DEL, EXISTS, DBSIZE, and CLEAR commands with atomic operations and WAL persistence.</p>
+            </div>
+
+            <div class="feature">
+                <h2>📊 Sorted Set Operations</h2>
+                <p>Advanced sorted set capabilities with ZADD, ZSCORE, ZREM, and ZRANGE commands. Perfect for leaderboards, priority queues, and time-series data with score-based ordering.</p>
+            </div>
+
+            <div class="feature">
+                <h2>💾 Data Durability</h2>
+                <p>Write-Ahead Logging (WAL) ensures data persistence across restarts, while periodic snapshots provide fast recovery and backup capabilities.</p>
+            </div>
+        </section>
+
+        <!-- Commands Showcase -->
+        <section class="commands-section">
+            <h2>Available Commands</h2>
+            <div class="command-grid">
+                <!-- Key-Value Commands -->
+                <div class="command-card">
+                    <h3>GET key</h3>
+                    <p class="command-description">Retrieve the value associated with a key. Returns NIL if key doesn't exist.</p>
+                </div>
+
+                <div class="command-card">
+                    <h3>SET key value</h3>
+                    <p class="command-description">Set the value of a key. Overwrites existing value if key already exists.</p>
+                </div>
+
+                <div class="command-card">
+                    <h3>DEL key</h3>
+                    <p class="command-description">Delete a key and its associated value from the database.</p>
+                </div>
+
+                <div class="command-card">
+                    <h3>EXISTS key</h3>
+                    <p class="command-description">Check if a key exists in the database. Returns 1 if exists, 0 otherwise.</p>
+                </div>
+
+                <div class="command-card">
+                    <h3>DBSIZE</h3>
+                    <p class="command-description">Get the number of keys currently stored in the database.</p>
+                </div>
+
+                <div class="command-card">
+                    <h3>CLEAR</h3>
+                    <p class="command-description">Remove all keys and values from the database.</p>
+                </div>
+
+                <!-- Sorted Set Commands -->
+                <div class="command-card">
+                    <h3>ZADD key member score</h3>
+                    <p class="command-description">Add a member with a score to a sorted set. Updates score if member already exists.</p>
+                </div>
+
+                <div class="command-card">
+                    <h3>ZSCORE key member</h3>
+                    <p class="command-description">Get the score associated with a member in a sorted set. Returns NIL if member doesn't exist.</p>
+                </div>
+
+                <div class="command-card">
+                    <h3>ZREM key member</h3>
+                    <p class="command-description">Remove a member from a sorted set. Returns 1 if removed, 0 if member didn't exist.</p>
+                </div>
+
+                <div class="command-card">
+                    <h3>ZRANGE key start stop [WITHSCORES]</h3>
+                    <p class="command-description">Get a range of members from a sorted set by index. Optionally include scores.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Demo -->
+        <section class="demo-section">
+            <h2>Try It Yourself</h2>
+            <div class="interactive-demo">
+                <div class="input-group">
+                    <select id="commandSelect">
+                        <option value="">Select a command</option>
+                        <option value="SET">SET</option>
+                        <option value="GET">GET</option>
+                        <option value="DEL">DEL</option>
+                        <option value="EXISTS">EXISTS</option>
+                        <option value="DBSIZE">DBSIZE</option>
+                        <option value="CLEAR">CLEAR</option>
+                        <option value="ZADD">ZADD</option>
+                        <option value="ZSCORE">ZSCORE</option>
+                        <option value="ZREM">ZREM</option>
+                        <option value="ZRANGE">ZRANGE</option>
+                    </select>
+
+                    <input type="text" id="keyInput" placeholder="key">
+                    <input type="text" id="valueInput" placeholder="value (for SET/ZADD)">
+                    <input type="text" id="scoreInput" placeholder="score (for ZADD)" style="display: none;">
+                    <input type="text" id="memberInput" placeholder="member (for ZADD/ZSCORE/ZREM)" style="display: none;">
+                    <input type="text" id="fromInput" placeholder="start (for ZRANGE)" style="display: none;">
+                    <input type="text" id="toInput" placeholder="stop (for ZRANGE)" style="display: none;">
+                    <select id="withScoresSelect" style="display: none;">
+                        <option value="">Without Scores</option>
+                        <option value="WITHSCORES">WITHSCORES</option>
+                    </select>
+
+                    <button class="btn" id="executeBtn">Execute</button>
+                </div>
+
+                <div class="terminal">
+                    <div class="terminal-content" id="terminalOutput">
+                        Welcome to KV-Database Interactive Demo!
+                        <br>Type commands above or select from the dropdown to get started.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Usage Instructions -->
+        <section class="demo-section">
+            <h2>How to Run KV-Database</h2>
+            <div class="terminal">
+                <div class="terminal-content">
+                    # Clone the repository<br>
+                    git clone https://github.com/yourusername/kv-database.git<br><br>
+                    # Build the project<br>
+                    cd kv-database<br>
+                    cargo build --release<br><br>
+                    # Run the server<br>
+                    cargo run --release<br><br>
+                    # Connect using netcat or telnet<br>
+                    nc localhost 7878<br>
+                    # Or use any TCP client<br><br>
+                    # Example commands:<br>
+                    SET name "John Doe"<br>
+                    GET name<br>
+                    ZADD leaderboard "Alice" 1500<br>
+                    ZADD leaderboard "Bob" 1200<br>
+                    ZRANGE leaderboard 0 -1 WITHSCORES
+                </div>
+            </div>
+
+            <p style="text-align: center; margin-top: 20px;">
+                <a href="https://github.com/yourusername/kv-database" class="btn" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    View on GitHub
+                </a>
+            </p>
+        </section>
+
+        <!-- Deployment Info -->
+        <section class="demo-section">
+            <h2>Deploy to Vercel</h2>
+            <p>While KV-Database is primarily designed as a TCP server, you can deploy a lightweight API wrapper or frontend to Vercel that connects to your hosted database instance.</p>
+            <div class="terminal">
+                <div class="terminal-content">
+                    # For Vercel deployment of frontend/demo<br>
+                    vercel kv-database-showcase.html<br><br>
+                    # Or deploy a Node.js/Go/Python API wrapper<br>
+                    # that connects to your TCP database server<br><br>
+                    # Example API endpoints:<br>
+                    GET /api/get?key=name<br>
+                    POST /api/set<br>
+                    POST /api/zadd<br>
+                    GET /api/zrange?key=leaderboard&start=0&stop=-1
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <p>Built with ❤️ using Rust • KV-Database v0.1.0</p>
+        <p>© 2026 KV-Database Project</p>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const commandSelect = document.getElementById('commandSelect');
+        const keyInput = document.getElementById('keyInput');
+        const valueInput = document.getElementById('valueInput');
+        const scoreInput = document.getElementById('scoreInput');
+        const memberInput = document.getElementById('memberInput');
+        const fromInput = document.getElementById('fromInput');
+        const toInput = document.getElementById('toInput');
+        const withScoresSelect = document.getElementById('withScoresSelect');
+        const executeBtn = document.getElementById('executeBtn');
+        const terminalOutput = document.getElementById('terminalOutput');
+
+        // State
+        let dbState = {
+            kvStore: new Map(),
+            sortedSets: new Map()
+        };
+
+        // Show/hide inputs based on selected command
+        commandSelect.addEventListener('change', () => {
+            const command = commandSelect.value;
+
+            // Hide all optional inputs first
+            scoreInput.style.display = 'none';
+            memberInput.style.display = 'none';
+            fromInput.style.display = 'none';
+            toInput.style.display = 'none';
+            withScoresSelect.style.display = 'none';
+
+            // Show relevant inputs based on command
+            switch (command) {
+                case 'SET':
+                    valueInput.style.display = 'inline-block';
+                    break;
+                case 'ZADD':
+                    valueInput.style.display = 'inline-block';
+                    scoreInput.style.display = 'inline-block';
+                    memberInput.style.display = 'inline-block';
+                    break;
+                case 'ZSCORE':
+                case 'ZREM':
+                    memberInput.style.display = 'inline-block';
+                    break;
+                case 'ZRANGE':
+                    fromInput.style.display = 'inline-block';
+                    toInput.style.display = 'inline-block';
+                    withScoresSelect.style.display = 'inline-block';
+                    break;
+                default:
+                    valueInput.style.display = 'none';
+            }
+        });
+
+        // Execute command
+        executeBtn.addEventListener('click', () => {
+            const command = commandSelect.value;
+            const key = keyInput.value.trim();
+
+            if (!command) {
+                showOutput('Please select a command');
+                return;
+            }
+
+            if (!key && command !== 'CLEAR' && command !== 'DBSIZE') {
+                showOutput('Please enter a key');
+                return;
+            }
+
+            try {
+                let result;
+
+                switch (command) {
+                    case 'SET': {
+                        const value = valueInput.value;
+                        if (!value) throw new Error('Please enter a value');
+                        dbState.kvStore.set(key, value);
+                        result = 'OK';
+                        break;
+                    }
+
+                    case 'GET': {
+                        const value = dbState.kvStore.get(key);
+                        result = value !== undefined ? `VALUE ${value}` : 'NIL';
+                        break;
+                    }
+
+                    case 'DEL': {
+                        const deleted = dbState.kvStore.delete(key);
+                        result = deleted ? 'OK' : 'OK';
+                        break;
+                    }
+
+                    case 'EXISTS': {
+                        result = dbState.kvStore.has(key) ? '1' : '0';
+                        break;
+                    }
+
+                    case 'DBSIZE': {
+                        result = dbState.kvStore.size.toString();
+                        break;
+                    }
+
+                    case 'CLEAR': {
+                        dbState.kvStore.clear();
+                        dbState.sortedSets.clear();
+                        result = 'OK';
+                        break;
+                    }
+
+                    case 'ZADD': {
+                        const member = memberInput.value.trim();
+                        const score = parseFloat(scoreInput.value);
+                        if (!member) throw new Error('Please enter a member');
+                        if (isNaN(score)) throw new Error('Please enter a valid score');
+
+                        if (!dbState.sortedSets.has(key)) {
+                            dbState.sortedSets.set(key, new Map());
+                        }
+                        const sortedSet = dbState.sortedSets.get(key);
+                        const isNew = !sortedSet.has(member);
+                        sortedSet.set(member, score);
+                        result = 'OK';
+                        break;
+                    }
+
+                    case 'ZSCORE': {
+                        const zscoreMember = memberInput.value.trim();
+                        if (!zscoreMember) throw new Error('Please enter a member');
+
+                        const sortedSet = dbState.sortedSets.get(key);
+                        if (!sortedSet) {
+                            result = 'NIL';
+                        } else {
+                            const score = sortedSet.get(zscoreMember);
+                            result = score !== undefined ? `VALUE ${score}` : 'NIL';
+                        }
+                        break;
+                    }
+
+                    case 'ZREM': {
+                        const zremMember = memberInput.value.trim();
+                        if (!zremMember) throw new Error('Please enter a member');
+
+                        const zset = dbState.sortedSets.get(key);
+                        if (!zset) {
+                            result = 'OK';
+                        } else {
+                            const removed = zset.delete(zremMember);
+                            if (zset.size === 0) {
+                                dbState.sortedSets.delete(key);
+                            }
+                            result = 'OK';
+                        }
+                        break;
+                    }
+
+                    case 'ZRANGE': {
+                        const from = parseInt(fromInput.value) || 0;
+                        const to = parseInt(toInput.value) || -1;
+                        const withScores = withScoresSelect.value === 'WITHSCORES';
+
+                        const zset = dbState.sortedSets.get(key);
+                        if (!zset) {
+                            result = 'NIL';
+                        } else {
+                            // Convert to array and sort by score
+                            const entries = Array.from(zset.entries())
+                                .sort((a, b) => a[1] - b[1]);
+
+                            // Handle negative indices
+                            let startIdx = from < 0 ? entries.length + from : from;
+                            let endIdx = to < 0 ? entries.length + to : to;
+
+                            // Clamp to valid range
+                            startIdx = Math.max(0, Math.min(startIdx, entries.length));
+                            endIdx = Math.max(-1, Math.min(endIdx, entries.length - 1));
+
+                            if (startIdx > endIdx) {
+                                result = '';
+                            } else {
+                                const range = entries.slice(startIdx, endIdx + 1);
+                                result = '';
+
+                                range.forEach(([member, score], index) => {
+                                    const actualIndex = startIdx + index;
+                                    if (withScores) {
+                                        result += `${actualIndex * 2 + 1}) "${member}"\n`;
+                                        result += `${actualIndex * 2 + 2}) "${score}"\n`;
+                                    } else {
+                                        result += `${actualIndex + 1}) "${member}"\n`;
+                                    }
+                                });
+                            }
+                        }
+                        break;
+                    }
+
+                    default:
+                        throw new Error('Unknown command');
+                }
+
+                showOutput(result);
+                clearInputsExceptKey();
+
+            } catch (error) {
+                showOutput(`ERR ${error.message}`);
+            }
+        });
+
+        // Helper functions
+        function showOutput(text) {
+            terminalOutput.innerHTML = `$ ${text}`;
+        }
+
+        function clearInputsExceptKey() {
+            valueInput.value = '';
+            scoreInput.value = '';
+            memberInput.value = '';
+            fromInput.value = '';
+            toInput.value = '';
+            withScoresSelect.value = '';
+
+            // Hide optional inputs
+            scoreInput.style.display = 'none';
+            memberInput.style.display = 'none';
+            fromInput.style.display = 'none';
+            toInput.style.display = 'none';
+            withScoresSelect.style.display = 'none';
+            valueInput.style.display = 'none';
+        }
+
+        // Initialize
+        showOutput('Welcome to KV-Database Interactive Demo!');
+    </script>
+</body>
+</html>
