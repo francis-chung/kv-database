@@ -3,16 +3,16 @@ use std::{
     time::Duration,
 };
 use tokio::{
-    net::{TcpListener, TcpStream}, 
-    io::{AsyncBufReadExt, BufReader, AsyncWriteExt}, 
+    net::{TcpListener, TcpStream},
+    io::{AsyncBufReadExt, BufReader, AsyncWriteExt},
     sync::Mutex,
 };
 
 use crate::{engine::Engine, snapshot::{SnapshotError, write_snapshot}};
 use crate::store::Db;
 use crate::protocol::{
-    parse_command, 
-    Command, 
+    parse_command,
+    Command,
     ProtocolError
 };
 use crate::wal::{
@@ -27,12 +27,12 @@ const ADDRESS: &str = "127.0.0.1:7878";
 const LOG_PATH: &str = "src/files/log.txt";
 const SNAPSHOT_PATH: &str = "src/files/snapshot.txt";
 
-type MutexEngine = Arc<Mutex<Engine<tokio::fs::File>>>;
+pub(crate) type MutexEngine = Arc<Mutex<Engine<tokio::fs::File>>>;
 
 impl From<SnapshotError> for io::Error {
     fn from(error: SnapshotError) -> Self {
         match error {
-            SnapshotError::Io(e) => e, 
+            SnapshotError::Io(e) => e,
             SnapshotError::InvalidSnapshot => {
                 io::Error::new(io::ErrorKind::InvalidData, "Invalid snapshot format")
             }
@@ -44,13 +44,13 @@ impl From<SnapshotError> for io::Error {
 }
 
 // begins watching the address and delegating connection handling
-pub async fn start_connection() -> io::Result<()> {
+pub async fn start_connection() -> io::Result<MutexEngine> {
     let listener = TcpListener::bind(ADDRESS).await?;
-    
+
     let mut store = Db::new();
 
     let _snapshot_wal_pos = load_snapshot(SNAPSHOT_PATH, &mut store).await?;
-    
+
     // replays all logs prior to starting
     // truncates log to longest well-formed prefix
     let good_len = replay(LOG_PATH, &mut store).await?;
@@ -80,22 +80,28 @@ pub async fn start_connection() -> io::Result<()> {
         }
     });
 
-    loop {
-        let (stream, _) = match listener.accept().await {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("Error in stream: {e}");
-                continue;
-            }
-        };
+    // spawn the TCP server loop
+    let tcp_engine = Arc::clone(&engine);
+    tokio::spawn(async move {
+        loop {
+            let (stream, _) = match listener.accept().await {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("Error in stream: {e}");
+                    continue;
+                }
+            };
 
-        let cloned_engine = Arc::clone(&engine);
-        tokio::spawn(async move {
-            if let Err(e) = handle_connection(stream, cloned_engine).await {
-                eprintln!("Failed to handle connection: {e:?}");
-            }
-        });
-    }
+            let cloned_engine = Arc::clone(&tcp_engine);
+            tokio::spawn(async move {
+                if let Err(e) = handle_connection(stream, cloned_engine).await {
+                    eprintln!("Failed to handle connection: {e:?}");
+                }
+            });
+        }
+    });
+
+    Ok(engine)
 }
 
 // returns response based on request
@@ -104,7 +110,7 @@ async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> Result<(),
     // into_split consumes stream and uses Arc-like architecture
     // both halves can be used and mutated without Mutex
     let (reader, mut writer) = stream.into_split();
-    // enables async buffering 
+    // enables async buffering
     let mut buf_reader = BufReader::new(reader);
     // byte vector allows non-UTF-8 characters, handled later
     let mut line_bytes = Vec::new();
@@ -124,7 +130,7 @@ async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> Result<(),
         let response = match result {
             Ok(cmd) => {
                 match dispatch(cmd, engine.clone()).await {
-                    Ok(resp) => resp, 
+                    Ok(resp) => resp,
                     Err(e) => format!("ERR {e}\n")
                 }
             }
@@ -155,12 +161,31 @@ async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> Result<(),
     Ok(())
 }
 
+// execution for frontend 
+// essentially handle_connection but simpler
+pub(crate) async fn execute_command(engine: &MutexEngine, line: &str) -> String {
+    let trimmed = line.trim_ascii_end();
+    let result = parse_command(trimmed.as_bytes());
+    match result {
+        Ok(cmd) => match dispatch(cmd, engine.clone()).await {
+            Ok(resp) => resp,
+            Err(e) => format!("ERR {e}\n"),
+        },
+        Err(ProtocolError::Empty) => "ERR empty input\n".to_string(),
+        Err(ProtocolError::UnknownCommand(cmd)) => format!("ERR command {cmd} not recognized\n"),
+        Err(ProtocolError::UnknownKeyword(key)) => format!("ERR keyword {key} not recognized\n"),
+        Err(ProtocolError::WrongArity) => "ERR wrong number of arguments\n".to_string(),
+        Err(ProtocolError::WrongType(t)) => format!("ERR field '{t}' was wrong type\n"),
+        Err(ProtocolError::InvalidUtf8) => "ERR non-UTF-8 character(s)\n".to_string(),
+    }
+}
+
 async fn dispatch(cmd: Command, engine: MutexEngine) -> io::Result<String> {
     match cmd {
         Command::Get { key } => {
             let mut eng = engine.lock().await;
             match eng.store.kv_store.get(&key) {
-                Some(value) => Ok(format!("VALUE {value}\n")), 
+                Some(value) => Ok(format!("VALUE {value}\n")),
                 None => Ok("NIL\n".to_string())
             }
         }
@@ -181,7 +206,7 @@ async fn dispatch(cmd: Command, engine: MutexEngine) -> io::Result<String> {
         Command::Exists { key } => {
             let mut eng = engine.lock().await;
             match eng.store.kv_store.contains_key(&key) {
-                true => Ok("1\n".to_string()), 
+                true => Ok("1\n".to_string()),
                 false => Ok("0\n".to_string())
             }
         }
@@ -203,7 +228,7 @@ async fn dispatch(cmd: Command, engine: MutexEngine) -> io::Result<String> {
         Command::Zscore { key, member } => {
             let eng = engine.lock().await;
             match eng.store.sorted_sets.zscore(&key, &member) {
-                Some(value) => Ok(format!("VALUE {value}\n")), 
+                Some(value) => Ok(format!("VALUE {value}\n")),
                 None => Ok("NIL\n".to_string())
             }
         }

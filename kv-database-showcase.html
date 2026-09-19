@@ -491,7 +491,8 @@
         // State
         let dbState = {
             kvStore: new Map(),
-            sortedSets: new Map()
+            sortedSets: new Map(),
+            apiUrl: 'http://localhost:8080/api/command'
         };
 
         // Show/hide inputs based on selected command
@@ -530,7 +531,7 @@
         });
 
         // Execute command
-        executeBtn.addEventListener('click', () => {
+        executeBtn.addEventListener('click', async () => {
             const command = commandSelect.value;
             const key = keyInput.value.trim();
 
@@ -545,139 +546,58 @@
             }
 
             try {
-                let result;
+                // Convert to server wire format
+                let requestBody = null;
 
                 switch (command) {
                     case 'SET': {
                         const value = valueInput.value;
                         if (!value) throw new Error('Please enter a value');
-                        dbState.kvStore.set(key, value);
-                        result = 'OK';
+                        requestBody = { key, value };
                         break;
                     }
-
-                    case 'GET': {
-                        const value = dbState.kvStore.get(key);
-                        result = value !== undefined ? `VALUE ${value}` : 'NIL';
-                        break;
-                    }
-
-                    case 'DEL': {
-                        const deleted = dbState.kvStore.delete(key);
-                        result = deleted ? 'OK' : 'OK';
-                        break;
-                    }
-
-                    case 'EXISTS': {
-                        result = dbState.kvStore.has(key) ? '1' : '0';
-                        break;
-                    }
-
-                    case 'DBSIZE': {
-                        result = dbState.kvStore.size.toString();
-                        break;
-                    }
-
-                    case 'CLEAR': {
-                        dbState.kvStore.clear();
-                        dbState.sortedSets.clear();
-                        result = 'OK';
-                        break;
-                    }
-
                     case 'ZADD': {
                         const member = memberInput.value.trim();
                         const score = parseFloat(scoreInput.value);
                         if (!member) throw new Error('Please enter a member');
                         if (isNaN(score)) throw new Error('Please enter a valid score');
-
-                        if (!dbState.sortedSets.has(key)) {
-                            dbState.sortedSets.set(key, new Map());
-                        }
-                        const sortedSet = dbState.sortedSets.get(key);
-                        const isNew = !sortedSet.has(member);
-                        sortedSet.set(member, score);
-                        result = 'OK';
+                        requestBody = { key, member, score };
                         break;
                     }
-
-                    case 'ZSCORE': {
-                        const zscoreMember = memberInput.value.trim();
-                        if (!zscoreMember) throw new Error('Please enter a member');
-
-                        const sortedSet = dbState.sortedSets.get(key);
-                        if (!sortedSet) {
-                            result = 'NIL';
-                        } else {
-                            const score = sortedSet.get(zscoreMember);
-                            result = score !== undefined ? `VALUE ${score}` : 'NIL';
-                        }
-                        break;
-                    }
-
+                    case 'ZSCORE':
                     case 'ZREM': {
-                        const zremMember = memberInput.value.trim();
-                        if (!zremMember) throw new Error('Please enter a member');
-
-                        const zset = dbState.sortedSets.get(key);
-                        if (!zset) {
-                            result = 'OK';
-                        } else {
-                            const removed = zset.delete(zremMember);
-                            if (zset.size === 0) {
-                                dbState.sortedSets.delete(key);
-                            }
-                            result = 'OK';
-                        }
+                        const member = memberInput.value.trim();
+                        if (!member) throw new Error('Please enter a member');
+                        requestBody = { key, member };
                         break;
                     }
-
                     case 'ZRANGE': {
                         const from = parseInt(fromInput.value) || 0;
                         const to = parseInt(toInput.value) || -1;
                         const withScores = withScoresSelect.value === 'WITHSCORES';
-
-                        const zset = dbState.sortedSets.get(key);
-                        if (!zset) {
-                            result = 'NIL';
-                        } else {
-                            // Convert to array and sort by score
-                            const entries = Array.from(zset.entries())
-                                .sort((a, b) => a[1] - b[1]);
-
-                            // Handle negative indices
-                            let startIdx = from < 0 ? entries.length + from : from;
-                            let endIdx = to < 0 ? entries.length + to : to;
-
-                            // Clamp to valid range
-                            startIdx = Math.max(0, Math.min(startIdx, entries.length));
-                            endIdx = Math.max(-1, Math.min(endIdx, entries.length - 1));
-
-                            if (startIdx > endIdx) {
-                                result = '';
-                            } else {
-                                const range = entries.slice(startIdx, endIdx + 1);
-                                result = '';
-
-                                range.forEach(([member, score], index) => {
-                                    const actualIndex = startIdx + index;
-                                    if (withScores) {
-                                        result += `${actualIndex * 2 + 1}) "${member}"\n`;
-                                        result += `${actualIndex * 2 + 2}) "${score}"\n`;
-                                    } else {
-                                        result += `${actualIndex + 1}) "${member}"\n`;
-                                    }
-                                });
-                            }
-                        }
+                        requestBody = { key, from, to, with_scores: withScores };
                         break;
                     }
-
-                    default:
-                        throw new Error('Unknown command');
+                    default: {
+                        requestBody = { key };
+                    }
                 }
 
-                showOutput(result);
+                // Send the request to the HTTP API
+                const response = await fetch(dbState.apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: requestBody ? JSON.stringify(requestBody) : null
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                showOutput(data.result);
                 clearInputsExceptKey();
 
             } catch (error) {
