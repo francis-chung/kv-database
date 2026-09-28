@@ -1,4 +1,5 @@
 use std::sync::Arc;
+
 use axum::{
     extract::State,
     response::IntoResponse,
@@ -55,12 +56,12 @@ struct ApiError {
 
 #[derive(Clone)]
 struct ApiState {
-    engine: Arc<Mutex<Engine<tokio::fs::File>>>
+    engine: Arc<Mutex<Engine<tokio::fs::File>>>,
 }
 
 pub type SharedEngine = Arc<Mutex<Engine<tokio::fs::File>>>;
 
-// converts HTTP API requests to server's wire format 
+// converts HTTP API requests to server's wire format
 // and calls shared execute_command function
 async fn handle_command(
     State(state): State<ApiState>,
@@ -95,6 +96,17 @@ pub async fn start_http_server(
     addr: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let router = create_router(engine);
+
+    // Allow the showcase page (opened from file:// or any origin) to call the
+    // HTTP API. Without this, browsers block the fetch and the demo throws
+    // "ERR failed to fetch".
+    let cors = tower_http::cors::CorsLayer::new()
+        .allow_origin(tower_http::cors::AllowOrigin::any())
+        .allow_headers([http::header::CONTENT_TYPE])
+        .allow_methods([http::Method::POST, http::Method::GET]);
+
+    let router = router.layer(cors);
+
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, router).await?;
     Ok(())

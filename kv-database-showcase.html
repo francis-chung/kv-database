@@ -11,11 +11,48 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --accent: #667eea;
+            --accent-gradient-start: #667eea;
+            --accent-gradient-end: #764ba2;
+            --border: #ddd;
+            --shadow: rgba(0,0,0,0.1);
+            --terminal-bg: #1e1e1e;
+            --terminal-text: #ffffff;
+            --tech-bg: #e3f2fd;
+            --tech-text: #1976d2;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #0d1117;
+                --bg-secondary: #161b22;
+                --bg-card: #21262d;
+                --text-primary: #e6edf3;
+                --text-secondary: #8b949e;
+                --accent: #8b5cf6;
+                --accent-gradient-start: #8b5cf6;
+                --accent-gradient-end: #a855f7;
+                --border: #30363d;
+                --shadow: rgba(0,0,0,0.5);
+                --terminal-bg: #010409;
+                --terminal-text: #e6edf3;
+                --tech-bg: #1e3a5f;
+                --tech-text: #7dd3fc;
+            }
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background-color: #f8f9fa;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .container {
@@ -26,11 +63,12 @@
 
         header {
             text-align: center;
-            padding: 40px 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 60px 40px;
+            background: linear-gradient(135deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
             color: white;
-            border-radius: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         header h1 {
@@ -51,11 +89,12 @@
         }
 
         .feature {
-            background: white;
-            border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 12px var(--shadow);
             transition: transform 0.3s ease;
+            border: 1px solid var(--border);
         }
 
         .feature:hover {
@@ -63,30 +102,32 @@
         }
 
         .feature h2 {
-            color: #667eea;
+            color: var(--accent);
             margin-bottom: 15px;
             display: flex;
             align-items: center;
+            font-size: 1.5rem;
         }
 
         .feature h2::before {
             content: "";
             width: 8px;
             height: 8px;
-            background-color: #667eea;
-            margin-right: 10px;
+            background-color: var(--accent);
+            margin-right: 12px;
             border-radius: 50%;
         }
 
         .terminal {
-            background: #1e1e1e;
-            color: #fff;
+            background: var(--terminal-bg);
+            color: var(--terminal-text);
             padding: 20px;
             border-radius: 8px;
             font-family: 'Fira Code', 'Courier New', monospace;
             margin: 20px 0;
             overflow-x: auto;
             position: relative;
+            border: 1px solid var(--border);
         }
 
         .terminal::before {
@@ -103,18 +144,19 @@
         }
 
         .commands-section {
-            background: white;
-            border-radius: 10px;
+            background: var(--bg-card);
+            border-radius: 12px;
             padding: 30px;
             margin: 30px 0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px var(--shadow);
+            border: 1px solid var(--border);
         }
 
         .commands-section h2 {
-            color: #667eea;
+            color: var(--accent);
             margin-bottom: 25px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
+            border-bottom: 2px solid var(--border);
         }
 
         .command-grid {
@@ -124,35 +166,39 @@
         }
 
         .command-card {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 15px;
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--accent);
+            padding: 18px;
             border-radius: 0 8px 8px 0;
+            border: 1px solid var(--border);
         }
 
         .command-card h3 {
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 10px;
             font-family: 'Fira Code', monospace;
+            font-size: 1.1rem;
         }
 
         .command-description {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 0.9rem;
         }
 
         .demo-section {
-            background: white;
-            border-radius: 10px;
+            background: var(--bg-card);
+            border-radius: 12px;
             padding: 30px;
             margin: 30px 0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px var(--shadow);
+            border: 1px solid var(--border);
         }
 
         .demo-section h2 {
-            color: #667eea;
+            color: var(--accent);
             margin-bottom: 25px;
             text-align: center;
+            font-size: 2rem;
         }
 
         .interactive-demo {
