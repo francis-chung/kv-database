@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="KV-Database â€” a durable, in-memory key-value store with sorted sets, written in Rust. Write-ahead logging, snapshots, a custom skip list, and an LRU cache.">
-    <title>KV-Database â€” a durable key-value engine in Rust</title>
+    <meta name="description" content="KV-Database - a durable, in-memory key-value store with sorted sets, written in Rust. Write-ahead logging, snapshots, a custom skip list, and an LRU cache.">
+    <title>KV-Database - a durable key-value engine in Rust</title>
 
     <!-- Fonts: Space Grotesk (display/body) + JetBrains Mono (terminal/data). Self-describing, swap for no FOIT. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +26,7 @@
             --text: #e7edf3;
             --text-dim: #9aa7b4;
             --text-faint: #5f6d7a;
-            --accent: #39d98a;          /* emerald â€” matches the terminal $ prompt */
+            --accent: #39d98a;          /* emerald - matches the terminal $ prompt */
             --accent-dim: #2bb673;
             --accent-glow: rgba(57,217,138,0.14);
             --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
@@ -382,7 +382,7 @@
 
         <!-- ---------- Hero ---------- -->
         <header class="hero">
-            <span class="eyebrow reveal"><span class="nav-dot" style="width:7px;height:7px;box-shadow:none;"></span>Rust Â· Tokio Â· 2024 edition</span>
+            <span class="eyebrow reveal"><span class="nav-dot" style="width:7px;height:7px;box-shadow:none;"></span>Rust · Tokio · 2024 edition</span>
             <h1 class="reveal">A durable key-value engine, built <span class="accent">from the log up</span>.</h1>
             <p class="lede reveal">An in-memory store with sorted sets, a checksummed write-ahead log, atomic snapshots, a hand-written skip list, and an LRU cache. Redis-like commands over TCP and HTTP.</p>
             <div class="hero-actions reveal">
@@ -533,7 +533,7 @@
                     </div>
 
                     <div class="terminal">
-                        <div class="bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="ttl">kv-database â€” demo</span></div>
+                        <div class="bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="ttl">kv-database - demo</span></div>
                         <div class="body" id="terminalOutput">Welcome to KV-Database Interactive Demo!
 Select a command above to get started. Running in simulation mode.</div>
                     </div>
@@ -571,7 +571,7 @@ Select a command above to get started. Running in simulation mode.</div>
 
             <div class="code-callout shell reveal">
                 <div class="terminal">
-                    <div class="bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="ttl">src/server.rs â€” dispatch()</span></div>
+                    <div class="bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="ttl">src/server.rs - dispatch()</span></div>
                     <div class="body"><span class="c-cmt">// durable first, then apply</span>
 Command::Set { key, value } =&gt; {
     <span class="c-out">let mut eng = engine.lock().await;</span>
@@ -585,7 +585,7 @@ Command::Set { key, value } =&gt; {
 
             <div class="code-callout shell reveal">
                 <div class="terminal">
-                    <div class="bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="ttl">src/server.rs â€” periodic_snapshot()</span></div>
+                    <div class="bar"><span class="d r"></span><span class="d y"></span><span class="d g"></span><span class="ttl">src/server.rs - periodic_snapshot()</span></div>
                     <div class="body">loop {
     tokio::time::sleep(Duration::from_secs(60)).await;
     write_snapshot(&amp;cloned_engine.lock().await.store, &amp;temp_ss_path).await?;
@@ -642,7 +642,7 @@ nc 127.0.0.1 7878
     <footer>
         <div class="wrap foot">
             <span class="nav-brand"><span class="nav-dot"></span>KV-Database</span>
-            <span class="mono">Rust Â· Tokio Â· Axum</span>
+            <span class="mono">Rust · Tokio · Axum</span>
             <span>Built as a learning project in storage engine internals.</span>
         </div>
     </footer>
@@ -675,7 +675,7 @@ nc 127.0.0.1 7878
     </script>
 
     <!-- ====================================================================
-         INTERACTIVE DEMO LOGIC â€” preserved verbatim and verified (22/22 tests).
+         INTERACTIVE DEMO LOGIC - preserved verbatim and verified (22/22 tests).
          Do not alter: element IDs and semantics mirror the Rust server.
          ==================================================================== -->
     <script>
