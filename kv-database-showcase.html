@@ -100,6 +100,19 @@
         .nav-links { display: flex; gap: 22px; font-size: 0.9rem; color: var(--text-dim); }
         .nav-links a { transition: color 0.2s var(--ease); }
         .nav-links a:hover { color: var(--text); }
+        .nav-links a.demo-link { color: var(--accent); display: inline-flex; align-items: center; gap: 7px; font-weight: 500; }
+        .live-pulse {
+            width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+            box-shadow: 0 0 0 0 var(--accent-glow);
+            animation: livePulse 2s infinite;
+            flex: 0 0 auto;
+        }
+        @keyframes livePulse {
+            0%   { box-shadow: 0 0 0 0 rgba(57,217,138,0.5); }
+            70%  { box-shadow: 0 0 0 8px rgba(57,217,138,0); }
+            100% { box-shadow: 0 0 0 0 rgba(57,217,138,0); }
+        }
+        @media (prefers-reduced-motion: reduce) { .live-pulse { animation: none; } }
         .nav-cta {
             font-family: var(--mono);
             font-size: 0.82rem;
@@ -372,7 +385,7 @@
         <span class="nav-links">
             <a href="#features">Features</a>
             <a href="#commands">Commands</a>
-            <a href="#demo">Demo</a>
+            <a href="#demo" class="demo-link"><span class="live-pulse"></span>Live Demo</a>
             <a href="#architecture">Architecture</a>
         </span>
         <a class="nav-cta" href="https://github.com/francis-chung/kv-database">GitHub</a>
@@ -386,7 +399,7 @@
             <h1 class="reveal">A durable key-value engine, built <span class="accent">from the log up</span>.</h1>
             <p class="lede reveal">An in-memory store with sorted sets, a checksummed write-ahead log, atomic snapshots, a hand-written skip list, and an LRU cache. Redis-like commands over TCP and HTTP.</p>
             <div class="hero-actions reveal">
-                <a class="btn btn-primary" href="#demo">Try the live demo <span class="ic">&rarr;</span></a>
+                <a class="btn btn-primary" href="#demo">Try the live demo, no install <span class="ic">&rarr;</span></a>
                 <a class="btn btn-ghost" href="#architecture">How it works <span class="ic">&darr;</span></a>
             </div>
 
@@ -490,8 +503,9 @@
         <!-- ---------- Interactive demo ---------- -->
         <section class="block" id="demo">
             <div class="section-head reveal">
-                <h2>Run it in your browser.</h2>
-                <p>This demo runs a faithful in-browser simulation of the engine, no server required. If the real database is running locally, flip to live mode to hit the actual HTTP API.</p>
+                <span class="eyebrow" style="margin-bottom:20px;"><span class="live-pulse"></span>Live interactive demo</span>
+                <h2>Run every command, right here.</h2>
+                <p>No install, no setup. This runs a faithful in-browser simulation of the engine, so you can try all ten commands instantly. If the real database is running locally, flip to live mode to hit the actual HTTP API.</p>
             </div>
 
             <div class="shell reveal">
