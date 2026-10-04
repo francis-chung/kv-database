@@ -20,12 +20,11 @@
     "file://src/sorted_set.rs",
     "file://README.md",
     "file://kv-database-showcase.html",
-    "skill://.kiro/skills/*/SKILL.md"
+    "skill://.kiro/skills/*/SKILL.md",
+    "skill://~/.kiro/skills/*/SKILL.md"
   ],
   "hooks": {
-    "agentSpawn": [
-      { "command": "cargo --version" }
-    ]
+    "agentSpawn": [{ "command": "cargo --version" }]
   },
   "welcomeMessage": "Ready to maintain the KV-Database showcase. I'll keep every claim grounded in the Rust source."
 }
