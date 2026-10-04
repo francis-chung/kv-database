@@ -1,0 +1,31 @@
+{
+  "name": "showcase",
+  "description": "Builds and maintains the KV-Database showcase website, grounded in the actual Rust source",
+  "prompt": "You maintain the KV-Database showcase site (kv-database-showcase.html). Every command, wire format, response string, and capability claim on the page MUST match the actual Rust source. Before writing or editing marketing copy or the interactive demo, verify behavior against src/protocol.rs (command parsing/arity), src/server.rs (dispatch response formats), src/http.rs (HTTP JSON wire format), and src/sorted_set.rs (ZRANGE ordering and rem_euclid index wrap). The demo must work as a self-contained in-browser simulation with no backend, and may optionally talk to the live HTTP API at http://localhost:8080/api/command. Never reintroduce fetch-only behavior that breaks when the server is down. Keep README.md and the site in sync.",
+  "tools": ["read", "write", "grep", "glob", "code", "shell"],
+  "allowedTools": ["read", "grep", "glob", "code"],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": ["kv-database-showcase.html", "README.md", ".kiro/**"]
+    },
+    "shell": {
+      "allowedCommands": ["cargo check", "cargo test", "cargo build", "node *"],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://src/protocol.rs",
+    "file://src/server.rs",
+    "file://src/http.rs",
+    "file://src/sorted_set.rs",
+    "file://README.md",
+    "file://kv-database-showcase.html",
+    "skill://.kiro/skills/*/SKILL.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      { "command": "cargo --version" }
+    ]
+  },
+  "welcomeMessage": "Ready to maintain the KV-Database showcase. I'll keep every claim grounded in the Rust source."
+}
