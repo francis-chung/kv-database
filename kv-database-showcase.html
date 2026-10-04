@@ -281,6 +281,47 @@
             color: #1976d2;
         }
 
+        .mode-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .switch code {
+            background: var(--bg-secondary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .mode-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: var(--tech-bg);
+            color: var(--tech-text);
+            border: 1px solid var(--border);
+        }
+
+        .mode-badge.live {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
         @media (max-width: 768px) {
             header h1 {
                 font-size: 2rem;
@@ -426,6 +467,19 @@
         <!-- Interactive Demo -->
         <section class="demo-section">
             <h2>Try It Yourself</h2>
+            <p style="text-align:center; margin-bottom:20px;">
+                This demo runs a faithful in-browser simulation of the engine &mdash; no server required.
+                If you have the real database running locally, flip to live mode to talk to the actual HTTP API.
+            </p>
+
+            <div class="mode-toggle">
+                <label class="switch">
+                    <input type="checkbox" id="liveModeToggle">
+                    <span>Connect to live API (<code>http://localhost:8080</code>)</span>
+                </label>
+                <span class="mode-badge" id="modeBadge">Simulation</span>
+            </div>
+
             <div class="interactive-demo">
                 <div class="input-group">
                     <select id="commandSelect">
@@ -443,9 +497,9 @@
                     </select>
 
                     <input type="text" id="keyInput" placeholder="key">
-                    <input type="text" id="valueInput" placeholder="value (for SET/ZADD)">
-                    <input type="text" id="scoreInput" placeholder="score (for ZADD)" style="display: none;">
+                    <input type="text" id="valueInput" placeholder="value (for SET)" style="display: none;">
                     <input type="text" id="memberInput" placeholder="member (for ZADD/ZSCORE/ZREM)" style="display: none;">
+                    <input type="text" id="scoreInput" placeholder="score (for ZADD)" style="display: none;">
                     <input type="text" id="fromInput" placeholder="start (for ZRANGE)" style="display: none;">
                     <input type="text" id="toInput" placeholder="stop (for ZRANGE)" style="display: none;">
                     <select id="withScoresSelect" style="display: none;">
@@ -459,7 +513,7 @@
                 <div class="terminal">
                     <div class="terminal-content" id="terminalOutput">
                         Welcome to KV-Database Interactive Demo!
-                        <br>Type commands above or select from the dropdown to get started.
+                        <br>Select a command above to get started. Running in simulation mode.
                     </div>
                 </div>
             </div>
@@ -471,7 +525,7 @@
             <div class="terminal">
                 <div class="terminal-content">
                     # Clone the repository<br>
-                    git clone https://github.com/yourusername/kv-database.git<br><br>
+                    git clone https://github.com/francis-chung/kv-database.git<br><br>
                     # Build the project<br>
                     cd kv-database<br>
                     cargo build --release<br><br>
@@ -490,27 +544,98 @@
             </div>
 
             <p style="text-align: center; margin-top: 20px;">
-                <a href="https://github.com/yourusername/kv-database" class="btn" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                <a href="https://github.com/francis-chung/kv-database" class="btn" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
                     View on GitHub
                 </a>
             </p>
         </section>
 
-        <!-- Deployment Info -->
-        <section class="demo-section">
-            <h2>Deploy to Vercel</h2>
-            <p>While KV-Database is primarily designed as a TCP server, you can deploy a lightweight API wrapper or frontend to Vercel that connects to your hosted database instance.</p>
+        <!-- Architecture Deep-Dive -->
+        <section class="commands-section">
+            <h2>How It Works: Architecture</h2>
+            <p style="margin-bottom:25px; color: var(--text-secondary);">
+                KV-Database is a small but complete storage engine. Every write is made durable before it is
+                acknowledged, hot keys are cached, and sorted sets are backed by a hand-written skip list.
+                All access is serialized through a single async engine behind a <code>Mutex</code>.
+            </p>
+
+            <div class="command-grid">
+                <div class="command-card">
+                    <h3>Write-Ahead Log</h3>
+                    <p class="command-description">
+                        Every mutating command is appended to a checksummed WAL <em>before</em> the in-memory
+                        store is updated, so a crash can never lose an acknowledged write. Each record carries a
+                        CRC32 so torn or corrupted entries are detected and skipped on replay.
+                    </p>
+                </div>
+                <div class="command-card">
+                    <h3>Periodic Snapshots</h3>
+                    <p class="command-description">
+                        A background task snapshots the full dataset to a temp file and atomically renames it,
+                        then truncates the WAL. On restart the engine loads the snapshot and replays only the
+                        remaining log &mdash; fast recovery with a bounded log size.
+                    </p>
+                </div>
+                <div class="command-card">
+                    <h3>Skip List (Sorted Sets)</h3>
+                    <p class="command-description">
+                        Sorted sets use a custom skip list with span and rank tracking, giving O(log n) insert,
+                        remove, and index-based <code>ZRANGE</code>. Ordering is by score, with ties broken by
+                        member key.
+                    </p>
+                </div>
+                <div class="command-card">
+                    <h3>LRU Cache</h3>
+                    <p class="command-description">
+                        The key-value map is wrapped in an LRU cache (capacity 50) with hit/miss statistics,
+                        so repeated reads of hot keys skip the main hash map lookup.
+                    </p>
+                </div>
+            </div>
+
+            <h3 style="margin:30px 0 10px; color: var(--text-primary);">Durability first: log before you apply</h3>
+            <p style="color: var(--text-secondary); margin-bottom:10px;">
+                The <code>SET</code> handler writes the WAL record before mutating the store (<code>src/server.rs</code>):
+            </p>
             <div class="terminal">
                 <div class="terminal-content">
-                    # For Vercel deployment of frontend/demo<br>
-                    vercel kv-database-showcase.html<br><br>
-                    # Or deploy a Node.js/Go/Python API wrapper<br>
-                    # that connects to your TCP database server<br><br>
-                    # Example API endpoints:<br>
-                    GET /api/get?key=name<br>
-                    POST /api/set<br>
-                    POST /api/zadd<br>
-                    GET /api/zrange?key=leaderboard&start=0&stop=-1
+                    Command::Set { key, value } =&gt; {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;let mut eng = engine.lock().await;<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;let bytes = encode_record(&amp;Command::Set { key: key.clone(), value: value.clone() });<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;eng.logger.buffered_log(&amp;bytes).await?;&nbsp;&nbsp;// durable first<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;eng.store.kv_store.insert(key, value);&nbsp;&nbsp;// then apply<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;Ok("OK\n".to_string())<br>
+                    }
+                </div>
+            </div>
+
+            <h3 style="margin:30px 0 10px; color: var(--text-primary);">Crash-safe snapshotting</h3>
+            <p style="color: var(--text-secondary); margin-bottom:10px;">
+                Snapshots are written to a temp file then atomically renamed, after which the WAL is truncated
+                (<code>src/server.rs</code>):
+            </p>
+            <div class="terminal">
+                <div class="terminal-content">
+                    loop {<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;tokio::time::sleep(Duration::from_secs(60)).await;<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;write_snapshot(&amp;cloned_engine.lock().await.store, &amp;temp_ss_path).await?;<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;std::fs::rename(&amp;temp_ss_path, &amp;snapshot_path)?;&nbsp;&nbsp;// atomic swap<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;truncate_wal(wal_path).await?;<br>
+                    }
+                </div>
+            </div>
+
+            <h3 style="margin:30px 0 10px; color: var(--text-primary);">HTTP API wrapper</h3>
+            <p style="color: var(--text-secondary); margin-bottom:10px;">
+                The Axum HTTP layer translates JSON into the same wire commands the TCP server speaks, so both
+                front ends share one <code>execute_command</code> path (<code>src/http.rs</code>):
+            </p>
+            <div class="terminal">
+                <div class="terminal-content">
+                    CommandRequest::Zadd { key, member, score } =&gt;<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;format!("ZADD {key} {member} {score}"),<br><br>
+                    // POST /api/command  { "key": "...", "member": "...", "score": 1.5 }<br>
+                    // =&gt; { "result": "OK\n" }
                 </div>
             </div>
         </section>
@@ -533,34 +658,174 @@
         const withScoresSelect = document.getElementById('withScoresSelect');
         const executeBtn = document.getElementById('executeBtn');
         const terminalOutput = document.getElementById('terminalOutput');
+        const liveModeToggle = document.getElementById('liveModeToggle');
+        const modeBadge = document.getElementById('modeBadge');
 
-        // State
-        let dbState = {
-            kvStore: new Map(),
-            sortedSets: new Map(),
-            apiUrl: 'http://localhost:8080/api/command'
+        const API_URL = 'http://localhost:8080/api/command';
+
+        // ------------------------------------------------------------------
+        // In-browser simulation engine.
+        // Mirrors src/server.rs dispatch() and src/sorted_set.rs semantics so
+        // the demo behaves exactly like the real database with NO server.
+        // ------------------------------------------------------------------
+        const sim = {
+            kvStore: new Map(),            // key -> value (string)
+            sortedSets: new Map(),         // key -> Map(member -> score:number)
+
+            // GET key -> "VALUE <v>" or "NIL"
+            get(key) {
+                return this.kvStore.has(key) ? `VALUE ${this.kvStore.get(key)}` : 'NIL';
+            },
+            // SET key value -> "OK"
+            set(key, value) {
+                this.kvStore.set(key, value);
+                return 'OK';
+            },
+            // DEL key -> "OK" (server returns OK regardless of presence)
+            del(key) {
+                this.kvStore.delete(key);
+                return 'OK';
+            },
+            // EXISTS key -> "1" | "0"
+            exists(key) {
+                return this.kvStore.has(key) ? '1' : '0';
+            },
+            // DBSIZE -> count of kv_store ONLY (matches server: sorted sets excluded)
+            dbsize() {
+                return String(this.kvStore.size);
+            },
+            // CLEAR -> "OK" (clears kv_store only, matching server dispatch)
+            clear() {
+                this.kvStore.clear();
+                return 'OK';
+            },
+            // ZADD key member score -> "OK"
+            zadd(key, member, score) {
+                if (!this.sortedSets.has(key)) this.sortedSets.set(key, new Map());
+                this.sortedSets.get(key).set(member, score);
+                return 'OK';
+            },
+            // ZSCORE key member -> "VALUE <score>" or "NIL"
+            zscore(key, member) {
+                const set = this.sortedSets.get(key);
+                if (set && set.has(member)) return `VALUE ${formatScore(set.get(member))}`;
+                return 'NIL';
+            },
+            // ZREM key member -> "OK"; drop the set when it becomes empty (matches zrem)
+            zrem(key, member) {
+                const set = this.sortedSets.get(key);
+                if (set) {
+                    set.delete(member);
+                    if (set.size === 0) this.sortedSets.delete(key);
+                }
+                return 'OK';
+            },
+            // ZRANGE key start stop [WITHSCORES]
+            // Ordering: score asc, ties broken by member key asc (matches skip list).
+            // Indices wrap via rem_euclid; empty/missing set -> "NIL".
+            zrange(key, start, stop, withScores) {
+                const set = this.sortedSets.get(key);
+                if (!set || set.size === 0) return 'NIL';
+
+                const sorted = [...set.entries()].sort((a, b) => {
+                    if (a[1] !== b[1]) return a[1] - b[1];     // score ascending
+                    return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0; // then member key
+                });
+
+                const n = sorted.length;
+                const from = ((start % n) + n) % n;  // rem_euclid
+                const to = ((stop % n) + n) % n;
+                if (to < from) return 'NIL';          // server returns empty -> NIL
+
+                const lines = [];
+                if (withScores) {
+                    for (let i = from; i <= to; i++) {
+                        const idx = i - from;
+                        lines.push(`${2 * idx + 1}) "${sorted[i][0]}"`);
+                        lines.push(`${2 * idx + 2}) "${formatScore(sorted[i][1])}"`);
+                    }
+                } else {
+                    for (let i = from; i <= to; i++) {
+                        lines.push(`${i - from + 1}) "${sorted[i][0]}"`);
+                    }
+                }
+                return lines.join('\n');
+            }
         };
 
-        // Show/hide inputs based on selected command
-        commandSelect.addEventListener('change', () => {
-            const command = commandSelect.value;
+        // Format scores like Rust's Display for f64 (e.g. 1.5 -> "1.5", 1500 -> "1500")
+        function formatScore(n) {
+            return Number.isInteger(n) ? String(n) : String(n);
+        }
 
-            // Hide all optional inputs first
+        function runSimulation(command, args) {
+            switch (command) {
+                case 'GET':    return sim.get(args.key);
+                case 'SET':    return sim.set(args.key, args.value);
+                case 'DEL':    return sim.del(args.key);
+                case 'EXISTS': return sim.exists(args.key);
+                case 'DBSIZE': return sim.dbsize();
+                case 'CLEAR':  return sim.clear();
+                case 'ZADD':   return sim.zadd(args.key, args.member, args.score);
+                case 'ZSCORE': return sim.zscore(args.key, args.member);
+                case 'ZREM':   return sim.zrem(args.key, args.member);
+                case 'ZRANGE': return sim.zrange(args.key, args.from, args.to, args.with_scores);
+                default:       return `ERR command ${command} not recognized`;
+            }
+        }
+
+        // Build the HTTP API JSON body matching src/http.rs CommandRequest
+        function buildRequestBody(command, args) {
+            switch (command) {
+                case 'SET':    return { key: args.key, value: args.value };
+                case 'ZADD':   return { key: args.key, member: args.member, score: args.score };
+                case 'ZREM':   return { key: args.key, member: args.member };
+                case 'ZRANGE': return { key: args.key, from: args.from, to: args.to, with_scores: args.with_scores };
+                default:       return { key: args.key }; // GET/DEL/EXISTS/DBSIZE/CLEAR/ZSCORE
+            }
+        }
+
+        async function runLive(command, args) {
+            const body = buildRequestBody(command, args);
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const data = await response.json();
+            return (data.result || '').replace(/\n+$/,''); // trim trailing newline from server
+        }
+
+        // Mode toggle
+        liveModeToggle.addEventListener('change', () => {
+            if (liveModeToggle.checked) {
+                modeBadge.textContent = 'Live API';
+                modeBadge.classList.add('live');
+            } else {
+                modeBadge.textContent = 'Simulation';
+                modeBadge.classList.remove('live');
+            }
+        });
+
+        // Show/hide inputs based on selected command
+        function updateInputs() {
+            const command = commandSelect.value;
+            valueInput.style.display = 'none';
             scoreInput.style.display = 'none';
             memberInput.style.display = 'none';
             fromInput.style.display = 'none';
             toInput.style.display = 'none';
             withScoresSelect.style.display = 'none';
+            keyInput.style.display = (command === 'DBSIZE' || command === 'CLEAR') ? 'none' : 'inline-block';
 
-            // Show relevant inputs based on command
             switch (command) {
                 case 'SET':
                     valueInput.style.display = 'inline-block';
                     break;
                 case 'ZADD':
-                    valueInput.style.display = 'inline-block';
-                    scoreInput.style.display = 'inline-block';
                     memberInput.style.display = 'inline-block';
+                    scoreInput.style.display = 'inline-block';
                     break;
                 case 'ZSCORE':
                 case 'ZREM':
@@ -571,110 +836,106 @@
                     toInput.style.display = 'inline-block';
                     withScoresSelect.style.display = 'inline-block';
                     break;
-                default:
-                    valueInput.style.display = 'none';
             }
-        });
+        }
+        commandSelect.addEventListener('change', updateInputs);
 
         // Execute command
         executeBtn.addEventListener('click', async () => {
             const command = commandSelect.value;
             const key = keyInput.value.trim();
 
-            if (!command) {
-                showOutput('Please select a command');
-                return;
-            }
-
+            if (!command) { showOutput('ERR please select a command'); return; }
             if (!key && command !== 'CLEAR' && command !== 'DBSIZE') {
-                showOutput('Please enter a key');
+                showOutput('ERR please enter a key');
                 return;
             }
 
+            // Gather + validate arguments (mirrors server arity/type checks)
+            let args = { key };
             try {
-                // Convert to server wire format
-                let requestBody = null;
-
                 switch (command) {
                     case 'SET': {
-                        const value = valueInput.value;
-                        if (!value) throw new Error('Please enter a value');
-                        requestBody = { key, value };
+                        const value = valueInput.value.trim();
+                        if (!value) throw new Error('please enter a value');
+                        args.value = value;
                         break;
                     }
                     case 'ZADD': {
                         const member = memberInput.value.trim();
                         const score = parseFloat(scoreInput.value);
-                        if (!member) throw new Error('Please enter a member');
-                        if (isNaN(score)) throw new Error('Please enter a valid score');
-                        requestBody = { key, member, score };
+                        if (!member) throw new Error('please enter a member');
+                        if (isNaN(score)) throw new Error("field 'score' was wrong type");
+                        args.member = member;
+                        args.score = score;
                         break;
                     }
                     case 'ZSCORE':
                     case 'ZREM': {
                         const member = memberInput.value.trim();
-                        if (!member) throw new Error('Please enter a member');
-                        requestBody = { key, member };
+                        if (!member) throw new Error('please enter a member');
+                        args.member = member;
                         break;
                     }
                     case 'ZRANGE': {
-                        const from = parseInt(fromInput.value) || 0;
-                        const to = parseInt(toInput.value) || -1;
-                        const withScores = withScoresSelect.value === 'WITHSCORES';
-                        requestBody = { key, from, to, with_scores: withScores };
+                        const from = parseInt(fromInput.value, 10);
+                        const to = parseInt(toInput.value, 10);
+                        if (isNaN(from)) throw new Error("field 'from' was wrong type");
+                        if (isNaN(to)) throw new Error("field 'to' was wrong type");
+                        args.from = from;
+                        args.to = to;
+                        args.with_scores = withScoresSelect.value === 'WITHSCORES';
                         break;
                     }
-                    default: {
-                        requestBody = { key };
-                    }
                 }
-
-                // Send the request to the HTTP API
-                const response = await fetch(dbState.apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: requestBody ? JSON.stringify(requestBody) : null
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                showOutput(data.result);
-                clearInputsExceptKey();
-
-            } catch (error) {
-                showOutput(`ERR ${error.message}`);
+            } catch (e) {
+                showOutput(`ERR ${e.message}`);
+                return;
             }
+
+            // Run against live API or simulation
+            if (liveModeToggle.checked) {
+                try {
+                    const result = await runLive(command, args);
+                    showOutput(result);
+                } catch (error) {
+                    // Graceful fallback: never leave the user staring at "Failed to fetch"
+                    showOutput(
+                        `ERR could not reach live API (${error.message}).\n` +
+                        `Is the server running? Start it with: cargo run\n` +
+                        `Falling back to simulation:\n` +
+                        runSimulation(command, args)
+                    );
+                }
+            } else {
+                showOutput(runSimulation(command, args));
+            }
+
+            clearArgInputs();
         });
 
         // Helper functions
         function showOutput(text) {
-            terminalOutput.innerHTML = `$ ${text}`;
+            // Preserve multi-line output (e.g. ZRANGE) by converting newlines
+            const safe = String(text)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            terminalOutput.innerHTML = safe.split('\n').map(l => `$ ${l}`).join('<br>');
         }
 
-        function clearInputsExceptKey() {
+        // Clear argument inputs after execution WITHOUT hiding them,
+        // so the fields stay visible for the currently-selected command.
+        function clearArgInputs() {
             valueInput.value = '';
             scoreInput.value = '';
             memberInput.value = '';
             fromInput.value = '';
             toInput.value = '';
             withScoresSelect.value = '';
-
-            // Hide optional inputs
-            scoreInput.style.display = 'none';
-            memberInput.style.display = 'none';
-            fromInput.style.display = 'none';
-            toInput.style.display = 'none';
-            withScoresSelect.style.display = 'none';
-            valueInput.style.display = 'none';
         }
 
         // Initialize
-        showOutput('Welcome to KV-Database Interactive Demo!');
+        updateInputs();
+        showOutput('Welcome to KV-Database Interactive Demo! (simulation mode)');
     </script>
 </body>
 </html>
