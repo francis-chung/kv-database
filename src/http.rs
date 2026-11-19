@@ -48,12 +48,6 @@ struct CommandResponse {
     result: String,
 }
 
-// HTTP API error response
-// not currently being used
-#[derive(Debug, Serialize)]
-struct ApiError {
-    error: String,
-}
 
 #[derive(Clone)]
 struct ApiState {
