@@ -1,31 +1,12 @@
 use std::{
-    error::Error, io, sync::Arc,
-    time::Duration,
+    io, 
+    sync::Arc,
 };
-use tokio::{
-    net::{TcpListener, TcpStream},
-    io::{AsyncBufReadExt, BufReader, AsyncWriteExt},
-    sync::Mutex,
-};
+use tokio::sync::Mutex;
 
-use crate::{engine::Engine, snapshot::{SnapshotError, write_snapshot}};
-use crate::store::Db;
-use crate::protocol::{
-    parse_command,
-    Command,
-    ProtocolError
-};
-use crate::wal::{
-    encode_record,
-    replay,
-    truncate_wal,
-    WriteAheadLog
-};
-use crate::snapshot::load_snapshot;
-
-const ADDRESS: &str = "127.0.0.1:7878";
-const LOG_PATH: &str = "src/files/log.txt";
-const SNAPSHOT_PATH: &str = "src/files/snapshot.txt";
+use crate::engine::Engine;
+use crate::protocol::Command;
+use crate::wal::encode_record;
 
 pub(crate) type MutexEngine = Arc<Mutex<Engine<tokio::fs::File>>>;
 

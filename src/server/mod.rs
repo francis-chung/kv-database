@@ -1,24 +1,16 @@
 use std::{
-    error::Error, io, sync::Arc,
-    time::Duration,
+    io, 
+    sync::Arc,
 };
 use tokio::{
-    net::{TcpListener, TcpStream},
-    io::{AsyncBufReadExt, BufReader, AsyncWriteExt},
+    net::TcpListener,
     sync::Mutex,
 };
 
-use crate::{engine::Engine, snapshot::{SnapshotError, write_snapshot}};
+use crate::engine::Engine;
 use crate::store::Db;
-use crate::protocol::{
-    parse_command,
-    Command,
-    ProtocolError
-};
 use crate::wal::{
-    encode_record,
     replay,
-    truncate_wal,
     WriteAheadLog
 };
 use crate::snapshot::load_snapshot;
