@@ -1,0 +1,25 @@
+use std::io;
+
+use crate::protocol::reply::Reply;
+
+pub fn encode(reply: Reply) -> io::Result<String> {
+    match reply {
+        Reply::Ok => Ok("OK\n".to_string()), 
+        Reply::Nil => Ok("NIL\n".to_string()), 
+        Reply::SimpleString(string) => Ok(string),
+        Reply::BulkString(vec) => {
+            String::from_utf8(vec).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        }
+        Reply::Integer(int) => Ok(int.to_string()), 
+        Reply::Array(vec) => {
+            let mut response = String::new();
+            for (index, rep) in vec.iter().enumerate() {
+                if let Reply::BulkString(value) = rep {
+                    response += &format!("{}) \"{}\"\n", index + 1, String::from_utf8_lossy(value).into_owned());
+                }
+            }
+            Ok(response)
+        } 
+        Reply::Error(e) => Err(io::Error::new(io::ErrorKind::InvalidData, e))
+    }
+}

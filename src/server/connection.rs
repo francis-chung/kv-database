@@ -7,6 +7,7 @@ use tokio::{
 use kv_database::protocol::{
     command::parse_command, 
     ProtocolError,
+    line::encode::encode,
 };
 use crate::engine::MutexEngine;
 use crate::dispatch::dispatch;
@@ -47,7 +48,7 @@ pub(crate) async fn execute_command(engine: &MutexEngine, line: &str) -> String 
     let trimmed = line.trim_ascii_end();
     let result = parse_command(trimmed.as_bytes());
     match result {
-        Ok(cmd) => match dispatch(cmd, engine.clone()).await {
+        Ok(cmd) => match encode(dispatch(cmd, engine.clone()).await) {
             Ok(resp) => resp,
             Err(e) => format!("ERR {e}\n"),
         },
