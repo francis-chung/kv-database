@@ -1,5 +1,3 @@
-use std::io;
-
 use crate::engine::MutexEngine;
 use crate::wal::encode_record;
 use kv_database::protocol::{

@@ -6,11 +6,12 @@ pub fn encode(reply: Reply) -> io::Result<String> {
     match reply {
         Reply::Ok => Ok("OK\n".to_string()), 
         Reply::Nil => Ok("NIL\n".to_string()), 
-        Reply::SimpleString(string) => Ok(string),
+        Reply::SimpleString(string) => Ok(format!("{string}\n")),
         Reply::BulkString(vec) => {
-            String::from_utf8(vec).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+            let str = String::from_utf8(vec).expect("invalid UTF-8");
+            Ok(format!("{str}\n"))
         }
-        Reply::Integer(int) => Ok(int.to_string()), 
+        Reply::Integer(int) => Ok(format!("{}\n", int.to_string())), 
         Reply::Array(vec) => {
             let mut response = String::new();
             for (index, rep) in vec.iter().enumerate() {
