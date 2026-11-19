@@ -1,8 +1,8 @@
 use ordered_float::OrderedFloat;
 
 use crate::protocol::{
-  Command, 
-  ProtocolError,
+    Command, 
+    ProtocolError,
 };
 
 // implements basic get / set / del operations

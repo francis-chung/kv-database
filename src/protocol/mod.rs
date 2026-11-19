@@ -24,3 +24,5 @@ pub enum ProtocolError {
 }
 
 pub mod command;
+pub mod reply;
+pub mod line;
