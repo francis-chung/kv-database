@@ -30,6 +30,20 @@ impl From<WalError> for SnapshotError {
     }
 }
 
+impl From<SnapshotError> for io::Error {
+    fn from(error: SnapshotError) -> Self {
+        match error {
+            SnapshotError::Io(e) => e,
+            SnapshotError::InvalidSnapshot => {
+                io::Error::new(io::ErrorKind::InvalidData, "Invalid snapshot format")
+            }
+            SnapshotError::UnexpectedEof => {
+                io::Error::new(io::ErrorKind::UnexpectedEof, "Unexpected EOF in snapshot")
+            }
+        }
+    }
+}
+
 // snapshot format: 
 // [magic: u32 = 0x534E4150 ("SNAP")][version: u32][timestamp: u64][kv_count: u32]
 // [ (key_len: u32)(key_bytes)(val_len: u32)(val_bytes) ] × kv_count

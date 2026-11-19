@@ -10,7 +10,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::{engine::Engine, server::execute_command};
+use crate::engine::Engine;
+use crate::server::connection::execute_command;
 
 // HTTP API request body for commands that take parameters
 #[derive(Debug, Deserialize)]

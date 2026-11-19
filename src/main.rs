@@ -8,6 +8,7 @@ use kv_database::wal;
 
 // private modules only used by this binary
 mod server;
+mod dispatch;
 mod engine;
 mod snapshot;
 mod http;
