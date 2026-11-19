@@ -125,34 +125,7 @@ async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> Result<(),
                 break;
             }
         }
-        let trimmed = line_bytes.trim_ascii_end();
-        let result = parse_command(&trimmed);
-        let response = match result {
-            Ok(cmd) => {
-                match dispatch(cmd, engine.clone()).await {
-                    Ok(resp) => resp,
-                    Err(e) => format!("ERR {e}\n")
-                }
-            }
-            Err(ProtocolError::Empty) => {
-                "ERR empty input\n".to_string()
-            }
-            Err(ProtocolError::UnknownCommand(cmd)) => {
-                format!("ERR command {cmd} not recognized\n")
-            }
-            Err(ProtocolError::UnknownKeyword(key)) => {
-                format!("ERR keyword {key} not recognized\n")
-            }
-            Err(ProtocolError::WrongArity) => {
-                "ERR wrong number of arguments\n".to_string()
-            }
-            Err(ProtocolError::WrongType(t)) => {
-                format!("ERR field '{t}' was wrong type\n")
-            }
-            Err(ProtocolError::InvalidUtf8) => {
-                "ERR non-UTF-8 character(s)\n".to_string()
-            }
-        };
+        let response = execute_command(&engine, std::str::from_utf8(&line_bytes).unwrap()).await;
         if let Err(e) = writer.write_all(response.as_bytes()).await {
             eprintln!("Write error: {e}");
             break;
