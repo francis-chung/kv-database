@@ -11,7 +11,7 @@ use crate::engine::Engine;
 use crate::store::Db;
 use crate::wal::{
     replay,
-    WriteAheadLog
+    WriteAheadLog,
 };
 use crate::snapshot::load_snapshot;
 use crate::engine::MutexEngine;

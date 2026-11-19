@@ -1,27 +1,9 @@
 use ordered_float::OrderedFloat;
 
-pub enum Command {
-    Get { key: String },
-    Set { key: String, value: String },
-    Del { key: String },
-    Exists { key: String }, 
-    DbSize, 
-    Clear, 
-    Zadd { key: String, member: String, score: OrderedFloat<f64> }, 
-    Zscore { key: String, member: String }, 
-    Zrem { key: String, member: String }, 
-    Zrange { key: String, from: isize, to: isize, with_scores: bool }
-}
-
-#[derive(Debug)]
-pub enum ProtocolError {
-    Empty,
-    UnknownCommand(String),
-    UnknownKeyword(String),
-    WrongArity,
-    WrongType(String),
-    InvalidUtf8,
-}
+use crate::protocol::{
+  Command, 
+  ProtocolError,
+};
 
 // implements basic get / set / del operations
 pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {

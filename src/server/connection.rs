@@ -4,8 +4,8 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader, AsyncWriteExt},
 };
 
-use crate::protocol::{
-    parse_command,
+use kv_database::protocol::{
+    command::parse_command, 
     ProtocolError,
 };
 use crate::engine::MutexEngine;

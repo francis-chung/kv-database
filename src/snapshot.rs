@@ -1,12 +1,16 @@
 use crc32fast::Hasher;
 use ordered_float::OrderedFloat;
-use kv_database::wal::WalError;
 use std::io;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
 use crate::store::Db;
-use crate::wal::{write_bytes_with_len, read_string, read_float};
+use crate::wal::{
+    write_bytes_with_len, 
+    read_string, 
+    read_float, 
+    WalError,
+};
 
 // prefix to verify this is supposed to be a snapshot
 const SNAPSHOT_MAGIC: u32 = 0x534E4150;
