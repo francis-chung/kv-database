@@ -8,10 +8,8 @@ use crate::protocol::{
     parse_command,
     ProtocolError,
 };
-use crate::dispatch::{
-    MutexEngine, 
-    dispatch,
-};
+use crate::engine::MutexEngine;
+use crate::dispatch::dispatch;
 
 // returns response based on request
 pub(crate) async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> Result<(), Box<dyn Error>> {

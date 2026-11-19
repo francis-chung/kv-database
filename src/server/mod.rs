@@ -14,7 +14,7 @@ use crate::wal::{
     WriteAheadLog
 };
 use crate::snapshot::load_snapshot;
-use crate::dispatch::MutexEngine;
+use crate::engine::MutexEngine;
 
 pub mod connection;
 mod maintenance;

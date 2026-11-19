@@ -1,14 +1,8 @@
-use std::{
-    io, 
-    sync::Arc,
-};
-use tokio::sync::Mutex;
+use std::io;
 
-use crate::engine::Engine;
+use crate::engine::MutexEngine;
 use crate::protocol::Command;
 use crate::wal::encode_record;
-
-pub(crate) type MutexEngine = Arc<Mutex<Engine<tokio::fs::File>>>;
 
 pub(crate) async fn dispatch(cmd: Command, engine: MutexEngine) -> io::Result<String> {
     match cmd {

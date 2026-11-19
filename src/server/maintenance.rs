@@ -6,7 +6,7 @@ use std::{
 
 use crate::snapshot::write_snapshot;
 use crate::wal::truncate_wal;
-use crate::dispatch::MutexEngine;
+use crate::engine::MutexEngine;
 
 pub(crate) async fn periodic_snapshot(engine: MutexEngine, snapshot_path: &str, wal_path: &str) -> io::Result<()> {
     let temp_ss_path = snapshot_path.replace(".txt", ".tmp");
