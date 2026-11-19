@@ -30,6 +30,11 @@ impl From<WalError> for SnapshotError {
     }
 }
 
+// snapshot format: 
+// [magic: u32 = 0x534E4150 ("SNAP")][version: u32][timestamp: u64][kv_count: u32]
+// [ (key_len: u32)(key_bytes)(val_len: u32)(val_bytes) ] × kv_count
+// [ss_count: u32]
+// [ (key_len: u32)(key_bytes)(member_count: u32)( (member_len: u32)(member_bytes)(score: f64) ) × member_count ] × ss_count
 pub async fn write_snapshot(db: &Db, path: &str) -> io::Result<()> {
     let mut file = File::create(path).await?;
     let mut buf = Vec::new();
