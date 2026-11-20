@@ -1,51 +1,66 @@
 use std::io;
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt};
 
+const MAX_ARRAY_LEN: usize = 1024;
+const MAX_BULK_LEN: usize = 512 * 1024 * 1024;
+
 pub async fn resp_decode<R>(reader: &mut R) -> io::Result<Option<Vec<Vec<u8>>>>
 where 
     R: AsyncBufRead + Unpin,
 {
-    let mut line_bytes = Vec::new();
-    reader.read_until(b'\n', &mut line_bytes).await?;
-    if line_bytes.len() == 0 {
+    let mut line = Vec::new();
+
+    // header: *<count>\r\n
+    if reader.read_until(b'\n', &mut line).await? == 0 {
         return Ok(None)
     }
-    let stripped = line_bytes.strip_suffix(b"\r\n").unwrap();
-    if stripped[0] != b'*' {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "first character must be '*'"));
-    }
-    let Ok(stripped_utf8) = str::from_utf8(stripped) else {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "input must be UTF-8"));
-    };
-    let Ok(length) = stripped_utf8.parse::<usize>() else {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "length must be an integer"));
-    };
-    let mut result = Vec::new();
-    for _ in 0..length {
-        reader.read_until(b'\n', &mut line_bytes).await?;
-        if line_bytes.len() == 0 {
-            break;
+    let header = strip_crlf(&line)?;
+    let count = parse_prefixed(header, b'*', MAX_ARRAY_LEN)?;
+
+    let mut result = Vec::with_capacity(count);
+    for _ in 0..count {
+        line.clear();
+        
+        // bulk string: $<len>\r\n
+        if reader.read_until(b'\n', &mut line).await? == 0 {
+            return Err(eof("unexpected EOF reading bulk header"));
         }
-        let stripped = line_bytes.strip_suffix(b"\r\n").unwrap();
-        if stripped[0] != b'$' {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, 
-                                      "first character of array element must be '$'"));
+        let bulk_header = strip_crlf(&line)?;
+        let len = parse_prefixed(bulk_header, b'$', MAX_BULK_LEN)?;
+
+        let mut buf = vec![0u8; len + 2];
+        reader.read_exact(&mut buf).await?;
+        if !buf.ends_with(b"\r\n") {
+            return Err(invalid("bulk string not terminated by CRLF"));
         }
-        let Ok(stripped_utf8) = str::from_utf8(stripped) else {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "input must be UTF-8"));
-        };
-        let Ok(inner_length) = stripped_utf8.parse::<usize>() else {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, 
-                                      "length must be an integer"));
-        };
-        let mut key = vec![0u8; inner_length + 2];
-        reader.read_exact(&mut key).await?;
-        if !key.ends_with(b"\r\n") {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, 
-                                      "malformed element in array"));
-        }
-        key = key[..key.len()-2].to_vec();
-        result.push(key);
+        buf.truncate(len);
+        result.push(buf);
     }
     Ok(Some(result))
+}
+
+fn strip_crlf(line: &[u8]) -> io::Result<&[u8]> {
+    line.strip_suffix(b"\r\n").ok_or_else(|| invalid("line not terminated by CRLF"))
+}
+
+fn parse_prefixed(line: &[u8], prefix: u8, max: usize) -> io::Result<usize> {
+    if line.first() != Some(&prefix) {
+        return Err(invalid("wrong type prefix"));
+    }
+    let n = str::from_utf8(&line[1..])
+        .map_err(|_| invalid("length not UTF-8"))?
+        .parse()
+        .map_err(|_| invalid("length not integer"))?;
+    if n > max {
+        return Err(invalid("length exceeds max"));
+    }
+    Ok(n)
+}
+
+fn invalid(msg: &str) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, msg)
+}
+
+fn eof(msg: &str) -> io::Error {
+    io::Error::new(io::ErrorKind::UnexpectedEof, msg)
 }
