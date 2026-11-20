@@ -33,10 +33,6 @@ pub(crate) async fn handle_resp_connection(stream: TcpStream, engine: MutexEngin
             }
         };
         let response = resp_encode(&execute_tokens(&engine, &tokens).await);
-        if let Err(e) = writer.write_all(&response).await {
-            eprintln!("Write error: {e}");
-            break;
-        }
+        writer.write_all(&response).await?;
     }
-    Ok(())
 }
