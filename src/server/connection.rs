@@ -5,7 +5,8 @@ use tokio::{
 };
 
 use kv_database::protocol::{
-    command::parse_command, 
+    command::{parse_command, parse_tokens},
+    reply::Reply, 
     ProtocolError,
     line::{encode::line_encode, decode::line_decode},
 };
@@ -50,11 +51,23 @@ pub(crate) async fn execute_command(engine: &MutexEngine, line: &[u8]) -> String
             Ok(resp) => resp,
             Err(e) => format!("ERR internal encode failure: {e}\n"),
         },
-        Err(ProtocolError::Empty) => "ERR empty input\n".to_string(),
-        Err(ProtocolError::UnknownCommand(cmd)) => format!("ERR command {cmd} not recognized\n"),
-        Err(ProtocolError::UnknownKeyword(key)) => format!("ERR keyword {key} not recognized\n"),
+        Err(ProtocolError::Empty) => "ERR empty command\n".to_string(),
+        Err(ProtocolError::UnknownCommand(cmd)) => format!("ERR unknown command '{cmd}'\n"),
+        Err(ProtocolError::UnknownKeyword(key)) => format!("ERR keyword '{key}' not recognized\n"),
         Err(ProtocolError::WrongArity) => "ERR wrong number of arguments\n".to_string(),
-        Err(ProtocolError::WrongType(t)) => format!("ERR field '{t}' was wrong type\n"),
-        Err(ProtocolError::InvalidUtf8) => "ERR non-UTF-8 character(s)\n".to_string(),
+        Err(ProtocolError::WrongType(t)) => format!("ERR field '{t}' is invalid\n"),
+        Err(ProtocolError::InvalidUtf8) => "ERR invalid UTF-8 in argument\n".to_string(),
     }
+}
+
+fn protocol_error_reply(e: ProtocolError) -> Reply {
+    let msg = match e {
+        ProtocolError::Empty => "ERR empty command".to_string(), 
+        ProtocolError::UnknownCommand(cmd) => format!("ERR unknown command '{cmd}'"), 
+        ProtocolError::UnknownKeyword(key) => format!("ERR keyword '{key}' not recognized"), 
+        ProtocolError::WrongArity => "ERR wrong number of arguments".to_string(),
+        ProtocolError::WrongType(t) => format!("ERR field '{t}' is invalid"),
+        ProtocolError::InvalidUtf8 => "ERR invalid UTF-8 in argument".to_string(),
+    };
+    Reply::Error(msg)
 }
