@@ -2,7 +2,7 @@ use std::io;
 
 use crate::protocol::reply::Reply;
 
-pub fn encode(reply: Reply) -> io::Result<String> {
+pub fn line_encode(reply: Reply) -> io::Result<String> {
     match reply {
         Reply::Ok => Ok("OK\n".to_string()), 
         Reply::Nil => Ok("NIL\n".to_string()), 

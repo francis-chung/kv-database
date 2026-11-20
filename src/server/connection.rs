@@ -1,13 +1,13 @@
 use std::error::Error;
 use tokio::{
     net::TcpStream,
-    io::{AsyncBufReadExt, BufReader, AsyncWriteExt},
+    io::{BufReader, AsyncWriteExt},
 };
 
 use kv_database::protocol::{
     command::parse_command, 
     ProtocolError,
-    line::encode::encode,
+    line::{encode::line_encode, decode::line_decode},
 };
 use crate::engine::MutexEngine;
 use crate::dispatch::dispatch;
@@ -25,7 +25,7 @@ pub(crate) async fn handle_connection(stream: TcpStream, engine: MutexEngine) ->
 
     loop {
         line_bytes.clear();
-        match buf_reader.read_until(b'\n', &mut line_bytes).await {
+        match line_decode(&mut buf_reader, &mut line_bytes).await {
             Ok(0) => break, // client closed connection without problems
             Ok(_) => {}
             Err(e) => {
@@ -46,7 +46,7 @@ pub(crate) async fn execute_command(engine: &MutexEngine, line: &[u8]) -> String
     let trimmed = line.trim_ascii_end();
     let result = parse_command(trimmed);
     match result {
-        Ok(cmd) => match encode(dispatch(cmd, engine.clone()).await) {
+        Ok(cmd) => match line_encode(dispatch(cmd, engine.clone()).await) {
             Ok(resp) => resp,
             Err(e) => format!("ERR internal encode failure: {e}\n"),
         },
