@@ -46,7 +46,7 @@ pub fn parse_tokens(tokens: &[Vec<u8>]) -> Result<Command, ProtocolError> {
             let member = convert_utf8(&tokens[2])?;
             let score_text = convert_utf8(&tokens[3])?;
             let score = OrderedFloat(score_text.parse::<f64>()
-                                    .map_err(|_| ProtocolError::WrongType(score_text))?);
+                                    .map_err(|_| ProtocolError::WrongType("score".to_string()))?);
             Ok(Command::Zadd { key, member, score })
         }, 
         "ZSCORE" => {
@@ -68,10 +68,10 @@ pub fn parse_tokens(tokens: &[Vec<u8>]) -> Result<Command, ProtocolError> {
             let key = convert_utf8(&tokens[1])?;
             let from_text = convert_utf8(&tokens[2])?;
             let from = from_text.parse::<isize>()
-                                .map_err(|_| ProtocolError::WrongType(from_text))?;
+                                .map_err(|_| ProtocolError::WrongType("from".to_string()))?;
             let to_text = convert_utf8(&tokens[3])?;
             let to = to_text.parse::<isize>()
-                            .map_err(|_| ProtocolError::WrongType(to_text))?;
+                            .map_err(|_| ProtocolError::WrongType("to".to_string()))?;
             let mut with_scores = false;
             if len == 5 {
                 let with_scores_text = convert_utf8(&tokens[4])?;
@@ -94,8 +94,8 @@ fn arity(tokens: &[Vec<u8>], len: usize) -> Result<(), ProtocolError> {
     Ok(())
 }
 
-fn convert_utf8(value: &Vec<u8>) -> Result<String, ProtocolError> {
-    String::from_utf8(value.clone()).map_err(|_| ProtocolError::InvalidUtf8)
+fn convert_utf8(value: &[u8]) -> Result<String, ProtocolError> {
+    String::from_utf8(value.to_vec()).map_err(|_| ProtocolError::InvalidUtf8)
 }
 
 pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
