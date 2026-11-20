@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::io;
 use tokio::{
     net::TcpStream,
     io::{BufReader, AsyncWriteExt},
@@ -14,7 +14,7 @@ use crate::engine::MutexEngine;
 use crate::dispatch::dispatch;
 
 // returns response based on request
-pub(crate) async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> Result<(), Box<dyn Error>> {
+pub(crate) async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> io::Result<()> {
     // into_split used for looping while requesting and responding later
     // into_split consumes stream and uses Arc-like architecture
     // both halves can be used and mutated without Mutex
