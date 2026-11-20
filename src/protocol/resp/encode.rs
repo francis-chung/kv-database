@@ -1,28 +1,24 @@
-use std::io;
-
 use crate::protocol::reply::Reply;
 
-pub fn resp_encode(reply: Reply) -> io::Result<String> {
+pub fn resp_encode(reply: &Reply) -> Vec<u8> {
     match reply {
-        Reply::Ok => Ok("+OK\r\n".to_string()), 
-        Reply::Nil => Ok("$-1\r\n".to_string()), 
-        Reply::SimpleString(string) => Ok(format!("+{string}\r\n")), 
+        Reply::Ok => b"+OK\r\n".to_vec(), 
+        Reply::Nil => b"$-1\r\n".to_vec(), 
+        Reply::SimpleString(string) => format!("+{string}\r\n").into_bytes(), 
         Reply::BulkString(vec) => {
-            let str = String::from_utf8_lossy_owned(vec);
-            Ok(format!("${}\r\n{str}\r\n", str.chars().count()))
+            let mut out = format!("${}\r\n", vec.len()).into_bytes();
+            out.extend_from_slice(&vec);
+            out.extend_from_slice(b"\r\n");
+            out
         }, 
-        Reply::Integer(int) => Ok(format!(":{int}\r\n")), 
+        Reply::Integer(int) => format!(":{int}\r\n").into_bytes(), 
         Reply::Array(vec) => {
-            let len = vec.len();
-            let mut response = format!("*{len}\r\n");
-            for rep in vec.iter() {
-                if let Reply::BulkString(inner_vec) = rep {
-                    let str = String::from_utf8_lossy_owned(inner_vec.clone());
-                    response.push_str(format!("${}\r\n{str}\r\n", str.len()).as_str());
-                }
+            let mut out = format!("*{}\r\n", vec.len()).into_bytes();
+            for item in vec {
+                out.extend(resp_encode(item));
             }
-            Ok(response)
+            out
         }, 
-        Reply::Error(e) => Ok(format!("-{e}\r\n"))
+        Reply::Error(e) => format!("-{e}\r\n").into_bytes()
     }
 }

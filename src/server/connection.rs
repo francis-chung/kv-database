@@ -46,7 +46,7 @@ pub(crate) async fn execute_command(engine: &MutexEngine, line: &[u8]) -> String
     let trimmed = line.trim_ascii_end();
     let result = parse_command(trimmed);
     match result {
-        Ok(cmd) => match line_encode(dispatch(cmd, engine.clone()).await) {
+        Ok(cmd) => match line_encode(&dispatch(cmd, engine.clone()).await) {
             Ok(resp) => resp,
             Err(e) => format!("ERR internal encode failure: {e}\n"),
         },
