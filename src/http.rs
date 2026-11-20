@@ -76,7 +76,7 @@ async fn handle_command(
         }
     };
 
-    let response = execute_command(&state.engine, &command).await;
+    let response = execute_command(&state.engine, &command.as_bytes()).await;
     Json(CommandResponse { result: response })
 }
 

@@ -8,7 +8,7 @@ pub fn encode(reply: Reply) -> io::Result<String> {
         Reply::Nil => Ok("NIL\n".to_string()), 
         Reply::SimpleString(string) => Ok(format!("{string}\n")),
         Reply::BulkString(vec) => {
-            let str = String::from_utf8(vec).expect("invalid UTF-8");
+            let str = String::from_utf8_lossy(&vec).into_owned();
             Ok(format!("{str}\n"))
         }
         Reply::Integer(int) => Ok(format!("{}\n", int.to_string())), 

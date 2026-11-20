@@ -33,7 +33,7 @@ pub(crate) async fn handle_connection(stream: TcpStream, engine: MutexEngine) ->
                 break;
             }
         }
-        let response = execute_command(&engine, std::str::from_utf8(&line_bytes).unwrap()).await;
+        let response = execute_command(&engine, &line_bytes).await;
         if let Err(e) = writer.write_all(response.as_bytes()).await {
             eprintln!("Write error: {e}");
             break;
@@ -44,9 +44,9 @@ pub(crate) async fn handle_connection(stream: TcpStream, engine: MutexEngine) ->
 
 // execution for frontend 
 // essentially handle_connection but simpler
-pub(crate) async fn execute_command(engine: &MutexEngine, line: &str) -> String {
+pub(crate) async fn execute_command(engine: &MutexEngine, line: &[u8]) -> String {
     let trimmed = line.trim_ascii_end();
-    let result = parse_command(trimmed.as_bytes());
+    let result = parse_command(trimmed);
     match result {
         Ok(cmd) => match encode(dispatch(cmd, engine.clone()).await) {
             Ok(resp) => resp,
