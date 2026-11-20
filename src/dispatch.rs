@@ -18,7 +18,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: MutexEngine) -> Reply {
             let mut eng = engine.lock().await;
             let bytes = encode_record(&Command::Set { key: key.clone(), value: value.clone() });
             if let Err(e) = eng.logger.buffered_log(&bytes).await {
-                return Reply::Error(e.to_string());
+                return Reply::Error(format!("ERR {e}"));
             }
             eng.store.kv_store.insert(key, value);
             Reply::Ok
@@ -27,7 +27,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: MutexEngine) -> Reply {
             let mut eng = engine.lock().await;
             let bytes = encode_record(&Command::Del { key: key.clone() });
             if let Err(e) = eng.logger.buffered_log(&bytes).await {
-                return Reply::Error(e.to_string());
+                return Reply::Error(format!("ERR {e}"));
             }
             eng.store.kv_store.remove(&key);
             Reply::Ok
@@ -51,7 +51,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: MutexEngine) -> Reply {
             let mut eng = engine.lock().await;
             let bytes = encode_record(&Command::Zadd { key: key.clone(), member: member.clone(), score });
             if let Err(e) = eng.logger.buffered_log(&bytes).await {
-                return Reply::Error(e.to_string());
+                return Reply::Error(format!("ERR {e}"));
             }
             eng.store.sorted_sets.zadd(&key, member, score);
             Reply::Ok
@@ -67,7 +67,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: MutexEngine) -> Reply {
             let mut eng = engine.lock().await;
             let bytes = encode_record(&Command::Zrem { key: key.clone(), member: member.clone() });
             if let Err(e) = eng.logger.buffered_log(&bytes).await {
-                return Reply::Error(e.to_string());
+                return Reply::Error(format!("ERR {e}"));
             }
             eng.store.sorted_sets.zrem(&key, &member);
             Reply::Ok

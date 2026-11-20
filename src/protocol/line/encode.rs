@@ -22,6 +22,6 @@ pub fn line_encode(reply: &Reply) -> io::Result<String> {
             }
             Ok(response)
         } 
-        Reply::Error(e) => Ok(format!("ERR {e}\n"))
+        Reply::Error(e) => Ok(format!("{e}\n"))
     }
 }
