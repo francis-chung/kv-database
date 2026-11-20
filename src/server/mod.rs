@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 use tokio::{
-    net::TcpListener,
+    net::{TcpListener, TcpStream},
     sync::Mutex,
 };
 
@@ -20,16 +20,41 @@ pub mod connection;
 mod resp_connection;
 mod maintenance;
 
-use crate::server::connection::handle_connection;
-use crate::server::maintenance::periodic_snapshot;
+use crate::server::{
+    connection::handle_connection, 
+    resp_connection::handle_resp_connection, 
+    maintenance::periodic_snapshot,
+};
 
-const ADDRESS: &str = "127.0.0.1:7878";
+const RESP_ADDRESS: &str = "127.0.0.1:7878";
+const LINE_ADDRESS: &str = "127.0.0.1:7879";
 const LOG_PATH: &str = "src/files/log.txt";
 const SNAPSHOT_PATH: &str = "src/files/snapshot.txt";
 
+async fn accept_loop<F, Fut>(listener: TcpListener, engine: MutexEngine, handler: F)
+where 
+    F: Fn(TcpStream, MutexEngine) -> Fut + Send + 'static, 
+    Fut: Future<Output = io::Result<()>> + Send + 'static,
+{
+    loop {
+        match listener.accept().await {
+            Ok((stream, _)) => {
+                let fut = handler(stream, Arc::clone(&engine));
+                tokio::spawn(async move {
+                    if let Err(e) = fut.await {
+                        eprintln!("Connection error: {e}");
+                    }
+                });
+            }, 
+            Err(e) => eprintln!("Error accepting connection: {e}"),
+        }
+    }
+}
+
 // begins watching the address and delegating connection handling
 pub async fn start_connection() -> io::Result<MutexEngine> {
-    let listener = TcpListener::bind(ADDRESS).await?;
+    let resp_listener = TcpListener::bind(RESP_ADDRESS).await?;
+    let line_listener = TcpListener::bind(LINE_ADDRESS).await?;
 
     let mut store = Db::new();
 
@@ -65,25 +90,8 @@ pub async fn start_connection() -> io::Result<MutexEngine> {
     });
 
     // spawn the TCP server loop
-    let tcp_engine = Arc::clone(&engine);
-    tokio::spawn(async move {
-        loop {
-            let (stream, _) = match listener.accept().await {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("Error in stream: {e}");
-                    continue;
-                }
-            };
-
-            let cloned_engine = Arc::clone(&tcp_engine);
-            tokio::spawn(async move {
-                if let Err(e) = handle_connection(stream, cloned_engine).await {
-                    eprintln!("Failed to handle connection: {e:?}");
-                }
-            });
-        }
-    });
+    tokio::spawn(accept_loop(resp_listener, Arc::clone(&engine), handle_resp_connection));
+    tokio::spawn(accept_loop(line_listener, Arc::clone(&engine), handle_connection));
 
     Ok(engine)
 }
