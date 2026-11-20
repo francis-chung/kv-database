@@ -42,15 +42,13 @@ pub(crate) async fn handle_connection(stream: TcpStream, engine: MutexEngine) ->
     Ok(())
 }
 
-// execution for frontend 
-// essentially handle_connection but simpler
 pub(crate) async fn execute_command(engine: &MutexEngine, line: &[u8]) -> String {
     let trimmed = line.trim_ascii_end();
     let result = parse_command(trimmed);
     match result {
         Ok(cmd) => match encode(dispatch(cmd, engine.clone()).await) {
             Ok(resp) => resp,
-            Err(e) => format!("ERR {e}\n"),
+            Err(e) => format!("ERR internal encode failure: {e}\n"),
         },
         Err(ProtocolError::Empty) => "ERR empty input\n".to_string(),
         Err(ProtocolError::UnknownCommand(cmd)) => format!("ERR command {cmd} not recognized\n"),

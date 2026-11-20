@@ -21,6 +21,6 @@ pub fn encode(reply: Reply) -> io::Result<String> {
             }
             Ok(response)
         } 
-        Reply::Error(e) => Err(io::Error::new(io::ErrorKind::InvalidData, e))
+        Reply::Error(e) => Ok(format!("ERR {e}\n"))
     }
 }
