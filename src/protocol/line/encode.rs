@@ -11,12 +11,13 @@ pub fn encode(reply: Reply) -> io::Result<String> {
             let str = String::from_utf8_lossy(&vec).into_owned();
             Ok(format!("{str}\n"))
         }
-        Reply::Integer(int) => Ok(format!("{}\n", int.to_string())), 
+        Reply::Integer(int) => Ok(format!("{}\n", int)), 
         Reply::Array(vec) => {
             let mut response = String::new();
             for (index, rep) in vec.iter().enumerate() {
                 if let Reply::BulkString(value) = rep {
-                    response += &format!("{}) \"{}\"\n", index + 1, String::from_utf8_lossy(value).into_owned());
+                    response += &format!("{}) \"{}\"\n", index + 1, 
+                                          String::from_utf8_lossy(value).into_owned());
                 }
             }
             Ok(response)

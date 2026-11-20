@@ -20,6 +20,12 @@ impl Db {
     }
 }
 
+impl Default for Db {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct HashMapWrapper<K, V> {
     pub map: HashMap<K, V>,
     cache: LRUCache<K, V>,
@@ -41,6 +47,7 @@ where
         }
     }
 
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.map.len()
     }
@@ -65,7 +72,7 @@ where
     }
 
     pub fn contains_key(&mut self, key: &K) -> bool {
-        if let Some(_) = self.cache.get(key) {
+        if self.cache.get(key).is_some() {
             self.hits += 1;
             return true;
         }

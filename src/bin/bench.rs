@@ -55,6 +55,6 @@ fn request_string(format: &str, num: usize, total: &usize) -> String {
                 x => format!("SET key{} value{}\n", total / 2 - x, total / 2 - x)
             }
         }
-        _ => format!("ERROR\n")
+        _ => "ERROR\n".to_string()
     }
 }

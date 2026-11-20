@@ -252,6 +252,6 @@ pub async fn truncate_wal(wal_path: &str) -> io::Result<()> {
     let empty_string = [0u8; 0];
     file.write_all(&empty_string).await?;
     file.sync_all().await?;
-    std::fs::rename(&temp_wal_path, &wal_path)?;
+    std::fs::rename(&temp_wal_path, wal_path)?;
     Ok(())
 }

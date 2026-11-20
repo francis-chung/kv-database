@@ -52,3 +52,13 @@ where
         }
     }
 }
+
+impl<K, V> Default for SortedSetStore<K, V>
+where 
+    K: Ord + std::hash::Hash + Clone,
+    V: Ord + Clone
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}

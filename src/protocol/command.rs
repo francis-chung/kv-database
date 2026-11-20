@@ -72,7 +72,7 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
                     return Err(ProtocolError::WrongArity);
                 }
                 let score = score_text.parse::<f64>();
-                if let Err(_) = score {
+                if score.is_err() {
                     return Err(ProtocolError::WrongType("score".to_string()));
                 }
                 Ok(Command::Zadd {
@@ -112,11 +112,11 @@ pub fn parse_command(line_bytes: &[u8]) -> Result<Command, ProtocolError> {
                     return Err(ProtocolError::WrongArity);
                 }
                 let from = from_text.parse::<isize>();
-                if let Err(_) = from {
+                if from.is_err() {
                     return Err(ProtocolError::WrongType("from".to_string()));
                 }
                 let to = to_text.parse::<isize>();
-                if let Err(_) = to {
+                if to.is_err() {
                     return Err(ProtocolError::WrongType("to".to_string()));
                 }
                 let with_scores_val: bool;

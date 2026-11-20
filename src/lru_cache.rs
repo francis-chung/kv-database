@@ -25,9 +25,7 @@ where
         let mut t = Node::new(None, None);
         h.next = Some(1);
         t.prev = Some(0);
-        let mut arena = Vec::<Node<K, V>>::new();
-        arena.push(h);
-        arena.push(t);
+        let arena = vec![h, t];
 
         LRUCache {
             arena, 
@@ -64,7 +62,7 @@ where
         match self.cache.get(key) {
             Some(value) => {
                 let value = value.clone();
-                let pos = self.key_to_pos[&key];
+                let pos = self.key_to_pos[key];
                 self.move_to_head(pos);
                 Some(value)
             }
@@ -90,7 +88,7 @@ where
                     self.remove_node(last_node);
                 }
                 match self.free_indices.len() {
-                    x if x == 0 => {
+                    0 => {
                         let pos = self.arena.len();
                         let cur = Node::new(Some(key.clone()), Some(value.clone()));
                         self.arena.push(cur);
