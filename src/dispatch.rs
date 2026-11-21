@@ -16,23 +16,13 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
         }
         Command::Set { key, value } => {
             let bytes = encode_record(&Command::Set { key: key.clone(), value: value.clone() });
-            {
-                let mut logger = engine.logger.lock().await;
-                if let Err(e) = logger.buffered_log(&bytes).await {
-                    return Reply::Error(format!("ERR {e}"));
-                }
-            }
+            let _log = log(&engine, &bytes).await.map_err(|e| e);
             engine.store.lock().await.kv_store.insert(key, value);
             Reply::Ok
         }
         Command::Del { key } => {
             let bytes = encode_record(&Command::Del { key: key.clone() });
-            {
-                let mut logger = engine.logger.lock().await;
-                if let Err(e) = logger.buffered_log(&bytes).await {
-                    return Reply::Error(format!("ERR {e}"));
-                }
-            }
+            let _log = log(&engine, &bytes).await.map_err(|e| e);
             engine.store.lock().await.kv_store.remove(&key);
             Reply::Ok
         }
@@ -53,12 +43,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
         }
         Command::Zadd { key, member, score } => {
             let bytes = encode_record(&Command::Zadd { key: key.clone(), member: member.clone(), score });
-            {
-                let mut logger = engine.logger.lock().await;
-                if let Err(e) = logger.buffered_log(&bytes).await {
-                    return Reply::Error(format!("ERR {e}"));
-                }
-            }
+            let _log = log(&engine, &bytes).await.map_err(|e| e);
             engine.store.lock().await.sorted_sets.zadd(&key, member, score);
             Reply::Ok
         }
@@ -71,12 +56,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
         }
         Command::Zrem { key, member } => {
             let bytes = encode_record(&Command::Zrem { key: key.clone(), member: member.clone() });
-            {
-                let mut logger = engine.logger.lock().await;
-                if let Err(e) = logger.buffered_log(&bytes).await {
-                    return Reply::Error(format!("ERR {e}"));
-                }
-            }
+            let _log = log(&engine, &bytes).await.map_err(|e| e);
             engine.store.lock().await.sorted_sets.zrem(&key, &member);
             Reply::Ok
         }
@@ -97,4 +77,12 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             }
         }
     }
+}
+
+async fn log(engine: &SharedEngine, bytes: &Vec<u8>) -> Result<(), Reply> {
+    let mut logger = engine.logger.lock().await;
+    if let Err(e) = logger.buffered_log(&bytes).await {
+        return Err(Reply::Error(format!("ERR {e}")));
+    }
+    Ok(())
 }
