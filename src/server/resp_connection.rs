@@ -12,11 +12,11 @@ use kv_database::protocol::{
     reply::Reply,
 };
 use crate::{
-    engine::MutexEngine, 
+    engine::SharedEngine, 
     server::connection::execute_tokens
 };
 
-pub(crate) async fn handle_resp_connection(stream: TcpStream, engine: MutexEngine) -> io::Result<()> {
+pub(crate) async fn handle_resp_connection(stream: TcpStream, engine: SharedEngine) -> io::Result<()> {
     let (reader, mut writer) = stream.into_split();
     let mut buf_reader = BufReader::new(reader);
 

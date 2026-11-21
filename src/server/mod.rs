@@ -4,7 +4,6 @@ use std::{
 };
 use tokio::{
     net::{TcpListener, TcpStream},
-    sync::Mutex,
 };
 
 use crate::engine::Engine;
@@ -14,7 +13,7 @@ use crate::wal::{
     WriteAheadLog,
 };
 use crate::snapshot::load_snapshot;
-use crate::engine::MutexEngine;
+use crate::engine::SharedEngine;
 
 pub mod connection;
 mod resp_connection;
@@ -31,9 +30,9 @@ const LINE_ADDRESS: &str = "127.0.0.1:7879";
 const LOG_PATH: &str = "src/files/log.txt";
 const SNAPSHOT_PATH: &str = "src/files/snapshot.txt";
 
-async fn accept_loop<F, Fut>(listener: TcpListener, engine: MutexEngine, handler: F)
+async fn accept_loop<F, Fut>(listener: TcpListener, engine: SharedEngine, handler: F)
 where 
-    F: Fn(TcpStream, MutexEngine) -> Fut + Send + 'static, 
+    F: Fn(TcpStream, SharedEngine) -> Fut + Send + 'static, 
     Fut: Future<Output = io::Result<()>> + Send + 'static,
 {
     loop {
@@ -52,7 +51,7 @@ where
 }
 
 // begins watching the address and delegating connection handling
-pub async fn start_connection() -> io::Result<MutexEngine> {
+pub async fn start_connection() -> io::Result<SharedEngine> {
     let resp_listener = TcpListener::bind(RESP_ADDRESS).await?;
     let line_listener = TcpListener::bind(LINE_ADDRESS).await?;
 
@@ -76,10 +75,7 @@ pub async fn start_connection() -> io::Result<MutexEngine> {
 
     // initializes logger to continue appending to log
     let logger = WriteAheadLog::new(async_file).await?;
-    let engine = Arc::new(Mutex::new(Engine {
-        store,
-        logger
-    }));
+    let engine = Arc::new(Engine::new(store, logger));
 
     // begin snapshotting loop asynchronously
     let cloned_engine = Arc::clone(&engine);

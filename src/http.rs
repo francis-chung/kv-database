@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::{
     extract::State,
     response::IntoResponse,
@@ -8,9 +6,8 @@ use axum::{
     Router,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
 
-use crate::engine::Engine;
+use crate::engine::SharedEngine;
 use crate::server::connection::execute_command;
 
 // HTTP API request body for commands that take parameters
@@ -51,10 +48,8 @@ struct CommandResponse {
 
 #[derive(Clone)]
 struct ApiState {
-    engine: Arc<Mutex<Engine<tokio::fs::File>>>,
+    engine: SharedEngine,
 }
-
-pub type SharedEngine = Arc<Mutex<Engine<tokio::fs::File>>>;
 
 // converts HTTP API requests to server's wire format
 // and calls shared execute_command function

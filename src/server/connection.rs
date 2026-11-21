@@ -10,11 +10,11 @@ use kv_database::protocol::{
     ProtocolError,
     line::{encode::line_encode, decode::line_decode},
 };
-use crate::engine::MutexEngine;
+use crate::engine::SharedEngine;
 use crate::dispatch::dispatch;
 
 // returns response based on request
-pub(crate) async fn handle_connection(stream: TcpStream, engine: MutexEngine) -> io::Result<()> {
+pub(crate) async fn handle_connection(stream: TcpStream, engine: SharedEngine) -> io::Result<()> {
     // into_split used for looping while requesting and responding later
     // into_split consumes stream and uses Arc-like architecture
     // both halves can be used and mutated without Mutex
@@ -43,7 +43,7 @@ pub(crate) async fn handle_connection(stream: TcpStream, engine: MutexEngine) ->
     Ok(())
 }
 
-pub(crate) async fn execute_command(engine: &MutexEngine, line: &[u8]) -> String {
+pub(crate) async fn execute_command(engine: &SharedEngine, line: &[u8]) -> String {
     let trimmed = line.trim_ascii_end();
     let result = parse_command(trimmed);
     match result {
@@ -72,7 +72,7 @@ fn protocol_error_reply(e: ProtocolError) -> Reply {
     Reply::Error(msg)
 }
 
-pub(crate) async fn execute_tokens(engine: &MutexEngine, tokens: &[Vec<u8>]) -> Reply {
+pub(crate) async fn execute_tokens(engine: &SharedEngine, tokens: &[Vec<u8>]) -> Reply {
     // redis-benchmark and redis-cli pings this way and requires 'PONG'
     if tokens.first().is_some_and(|t| t.eq_ignore_ascii_case(b"PING")) {
         return Reply::SimpleString("PONG".to_string());
