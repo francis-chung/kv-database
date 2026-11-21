@@ -2,9 +2,7 @@ use crate::protocol::Command;
 use crate::stores::store::Db;
 use crc32fast::Hasher;
 use ordered_float::OrderedFloat;
-use std::{
-    io::{self, Read, Cursor},
-};
+use std::io::{self, Cursor, Read};
 use tokio::{
     io::{BufWriter, AsyncWrite, AsyncWriteExt},
     fs::File,
@@ -24,12 +22,8 @@ impl<W: AsyncWrite + Unpin> WriteAheadLog<W> {
         Ok(WriteAheadLog { writer: BufWriter::new(writer) })
     }
     
-    // writes record to buffer, then writes to disk
     pub async fn buffered_log(&mut self, record: &[u8]) -> io::Result<()> {
         self.writer.write_all(record).await?;
-        self.writer.flush().await?;
-        // forces OS to write buffered content to disk before returning
-        // self.writer.get_ref().sync_all().await?;
         Ok(())
     }
 }

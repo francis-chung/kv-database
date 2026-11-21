@@ -22,7 +22,7 @@ mod maintenance;
 use crate::server::{
     connection::handle_connection, 
     resp_connection::handle_resp_connection, 
-    maintenance::periodic_snapshot,
+    maintenance::{periodic_flush, periodic_snapshot},
 };
 
 const RESP_ADDRESS: &str = "127.0.0.1:7878";
@@ -77,7 +77,11 @@ pub async fn start_connection() -> io::Result<SharedEngine> {
     let logger = WriteAheadLog::new(async_file).await?;
     let engine = Arc::new(Engine::new(store, logger));
 
-    // begin snapshotting loop asynchronously
+    // begin flushing WALs and snapshotting loop asynchronously
+    let cloned_engine = Arc::clone(&engine);
+    tokio::spawn(async move {
+        periodic_flush(cloned_engine).await;
+    });
     let cloned_engine = Arc::clone(&engine);
     tokio::spawn(async move {
         if let Err(e) = periodic_snapshot(cloned_engine, SNAPSHOT_PATH, LOG_PATH).await {
