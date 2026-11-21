@@ -1,6 +1,7 @@
 use ordered_float::OrderedFloat;
 
 pub enum Command {
+    Pong,
     Get { key: String },
     Set { key: String, value: String },
     Del { key: String },

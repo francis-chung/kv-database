@@ -7,6 +7,7 @@ use kv_database::protocol::{
 
 pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
     match cmd {
+        Command::Pong => Reply::SimpleString("PONG".to_string()),
         Command::Get { key } => {
             let mut store = engine.store.lock().await;
             match store.kv_store.get(&key) {

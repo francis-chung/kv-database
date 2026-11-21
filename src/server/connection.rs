@@ -73,10 +73,6 @@ fn protocol_error_reply(e: ProtocolError) -> Reply {
 }
 
 pub(crate) async fn execute_tokens(engine: &SharedEngine, tokens: &[Vec<u8>]) -> Reply {
-    // redis-benchmark and redis-cli pings this way and requires 'PONG'
-    if tokens.first().is_some_and(|t| t.eq_ignore_ascii_case(b"PING")) {
-        return Reply::SimpleString("PONG".to_string());
-    }
     match parse_tokens(tokens) {
         Ok(cmd) => dispatch(cmd, engine.clone()).await, 
         Err(e) => protocol_error_reply(e),

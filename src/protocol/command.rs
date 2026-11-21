@@ -11,6 +11,11 @@ pub fn parse_tokens(tokens: &[Vec<u8>]) -> Result<Command, ProtocolError> {
         return Err(ProtocolError::Empty);
     }
     match convert_utf8(&tokens[0])?.to_ascii_uppercase().as_str() {
+        // redis-benchmark and redis-cli pings this way and requires 'PONG'
+        "PING" => {
+            arity(tokens, 1)?;
+            Ok(Command::Pong)
+        },
         "GET" => {
             arity(tokens, 2)?;
             let key = convert_utf8(&tokens[1])?;
