@@ -88,9 +88,9 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
     }
 }
 
-async fn log(engine: &SharedEngine, bytes: &Vec<u8>) -> Result<(), Reply> {
+async fn log(engine: &SharedEngine, bytes: &[u8]) -> Result<(), Reply> {
     let mut logger = engine.logger.lock().await;
-    if let Err(e) = logger.buffered_log(&bytes).await {
+    if let Err(e) = logger.buffered_log(bytes).await {
         return Err(Reply::Error(format!("ERR {e}")));
     }
     Ok(())
