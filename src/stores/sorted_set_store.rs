@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::sorted_set::SkipList;
+use crate::stores::sorted_set::SkipList;
 
 const TREE_HEIGHT: usize = 16;
 

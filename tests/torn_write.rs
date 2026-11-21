@@ -3,7 +3,7 @@ use tokio::io::AsyncWrite;
 
 use kv_database::wal::{WriteAheadLog, encode_record, replay_from_bytes};
 use kv_database::protocol::Command;
-use kv_database::store::Db;
+use kv_database::stores::store::Db;
 
 struct TornWriter {
     buf: Vec<u8>, 

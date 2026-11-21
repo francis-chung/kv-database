@@ -1,5 +1,5 @@
 use crate::protocol::Command;
-use crate::store::Db;
+use crate::stores::store::Db;
 use crc32fast::Hasher;
 use ordered_float::OrderedFloat;
 use std::{

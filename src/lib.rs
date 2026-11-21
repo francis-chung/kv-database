@@ -4,11 +4,8 @@ use std::{
 };
 
 // exposes these crates to external crates
-pub mod store;
+pub mod stores;
 pub mod protocol;
-pub mod lru_cache;
-pub mod sorted_set;
-pub mod sorted_set_store;
 pub mod wal;
 
 // sender is the sending end of mpsc

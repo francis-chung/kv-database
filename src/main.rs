@@ -2,7 +2,7 @@ use std::io;
 use std::sync::Arc;
 
 // public API from our library
-use kv_database::store;
+use kv_database::stores::store;
 use kv_database::wal;
 
 // private modules only used by this binary
