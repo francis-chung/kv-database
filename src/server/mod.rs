@@ -84,7 +84,7 @@ pub async fn start_connection() -> io::Result<SharedEngine> {
     });
     let cloned_engine = Arc::clone(&engine);
     tokio::spawn(async move {
-        if let Err(e) = periodic_snapshot(cloned_engine, SNAPSHOT_PATH, LOG_PATH).await {
+        if let Err(e) = periodic_snapshot(cloned_engine, SNAPSHOT_PATH).await {
             eprintln!("Periodic snapshot failed: {e:?}");
         }
     });
