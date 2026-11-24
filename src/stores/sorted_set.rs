@@ -2,6 +2,8 @@ use std::{
     collections::HashMap, 
     convert::TryInto
 };
+
+#[derive(Clone)]
 pub struct SkipList<K, V> 
 {
     nodes: Vec<Node<K, V>>, 
@@ -222,6 +224,7 @@ where
     }
 }
 
+#[derive(Clone)]
 struct Node<K, V> 
 {
     key: K, 

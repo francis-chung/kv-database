@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 type Link = Option<usize>;
 
+#[derive(Clone)]
 pub struct LRUCache<K, V> {
     arena: Vec<Node<K, V>>,
     key_to_pos: HashMap<K, usize>, 
@@ -117,6 +118,7 @@ where
     }
 }
 
+#[derive(Clone)]
 struct Node<K, V> {
     key: Option<K>, 
     val: Option<V>, 

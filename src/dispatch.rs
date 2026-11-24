@@ -9,7 +9,10 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
     match cmd {
         Command::Pong => Reply::SimpleString("PONG".to_string()),
         Command::Get { key } => {
-            let mut store = engine.store.lock().await;
+            let Ok(mut store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
             match store.kv_store.get(&key) {
                 Some(value) => Reply::BulkString(value.into_bytes()), 
                 None => Reply::Nil
@@ -23,7 +26,11 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
-            engine.store.lock().await.kv_store.insert(key, value);
+            let Ok(mut store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
+            store.kv_store.insert(key, value);
             Reply::Ok
         }
         Command::Del { key } => {
@@ -34,22 +41,37 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
-            engine.store.lock().await.kv_store.remove(&key);
+            let Ok(mut store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
+            store.kv_store.remove(&key);
             Reply::Ok
         }
         Command::Exists { key } => {
-            let mut store = engine.store.lock().await;
+            let Ok(mut store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
             match store.kv_store.contains_key(&key) {
                 true => Reply::Integer(1),
                 false => Reply::Integer(0)
             }
         }
         Command::DbSize => {
-            let result = engine.store.lock().await.kv_store.len();
+            let Ok(store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
+            let result = store.kv_store.len();
             Reply::Integer(result)
         }
         Command::Clear => {
-            engine.store.lock().await.kv_store.clear();
+            let Ok(mut store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
+            store.kv_store.clear();
             Reply::Ok
         }
         Command::Zadd { key, member, score } => {
@@ -60,11 +82,18 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
-            engine.store.lock().await.sorted_sets.zadd(&key, member, score);
+            let Ok(mut store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
+            store.sorted_sets.zadd(&key, member, score);
             Reply::Ok
         }
         Command::Zscore { key, member } => {
-            let store = engine.store.lock().await;
+            let Ok(store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
             match store.sorted_sets.zscore(&key, &member) {
                 Some(value) => Reply::BulkString(value.to_string().into_bytes()),
                 None => Reply::Nil
@@ -78,11 +107,18 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
-            engine.store.lock().await.sorted_sets.zrem(&key, &member);
+            let Ok(mut store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
+            store.sorted_sets.zrem(&key, &member);
             Reply::Ok
         }
         Command::Zrange { key, from, to, with_scores } => {
-            let store = engine.store.lock().await;
+            let Ok(store) = engine.store.lock() else {
+                eprintln!("Store lock poisoned");
+                return Reply::Error("ERR internal lock error".to_string());
+            };
             match store.sorted_sets.zrange(&key, from, to, with_scores) {
                 Some (rows) => {
                     let mut items = Vec::new();

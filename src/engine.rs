@@ -1,13 +1,14 @@
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::sync::Mutex as SyncMutex;
+use tokio::sync::Mutex as AsyncMutex;
 
 use crate::store::Db;
 use crate::wal::WriteAheadLog;
 use tokio::io::AsyncWrite;
 
 pub struct Engine<W: AsyncWrite + Unpin> {
-    pub store: Mutex<Db>, 
-    pub logger: Mutex<WriteAheadLog<W>>
+    pub store: SyncMutex<Db>, 
+    pub logger: AsyncMutex<WriteAheadLog<W>>
 }
 
 impl<W> Engine<W> 
@@ -16,8 +17,8 @@ where
 {
     pub fn new(store: Db, logger: WriteAheadLog<W>) -> Self {
         Self {
-            store: Mutex::new(store), 
-            logger: Mutex::new(logger),
+            store: SyncMutex::new(store), 
+            logger: AsyncMutex::new(logger),
         }
     }
 }

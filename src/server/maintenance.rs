@@ -29,9 +29,12 @@ pub(crate) async fn periodic_snapshot(engine: SharedEngine, snapshot_path: &str)
         // lock WAL first so SETs cannot append until truncate is done
         let mut logger = engine.logger.lock().await;
         logger.writer.flush().await?;
-        let store = engine.store.lock().await;
-        write_snapshot(&store, &temp_ss_path).await?;
-        drop(store);
+        let snapshot_data = {
+            let store = engine.store.lock()
+                              .map_err(|_| io::Error::new(io::ErrorKind::Other, "Store lock poisoned during snapshot"))?;
+            store.clone()
+        };
+        write_snapshot(&snapshot_data, &temp_ss_path).await?;
         std::fs::rename(&temp_ss_path, snapshot_path)?;
         // truncate logger file in place while logger still has a handler
         logger.writer.get_mut().set_len(0).await?;

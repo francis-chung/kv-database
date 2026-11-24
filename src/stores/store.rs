@@ -6,6 +6,7 @@ use crate::stores::sorted_set_store::SortedSetStore;
 
 const LRU_CAPACITY: usize = 50;
 
+#[derive(Clone)]
 pub struct Db {
     pub kv_store: HashMapWrapper<String, String>, 
     pub sorted_sets: SortedSetStore<String, OrderedFloat<f64>>
@@ -26,6 +27,7 @@ impl Default for Db {
     }
 }
 
+#[derive(Clone)]
 pub struct HashMapWrapper<K, V> {
     pub map: HashMap<K, V>,
     cache: LRUCache<K, V>,
