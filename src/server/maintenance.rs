@@ -35,8 +35,8 @@ pub(crate) async fn periodic_snapshot(engine: SharedEngine, snapshot_path: &str)
             store.clone()
         };
         write_snapshot(&snapshot_data, &temp_ss_path).await?;
-        std::fs::rename(&temp_ss_path, snapshot_path)?;
+        tokio::fs::rename(&temp_ss_path, snapshot_path).await?;
         // truncate logger file in place while logger still has a handler
-        logger.writer.get_mut().set_len(0).await?;
+        logger.truncate().await?;
     }
 }

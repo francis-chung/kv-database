@@ -27,8 +27,8 @@ use crate::server::{
 
 const RESP_ADDRESS: &str = "127.0.0.1:7878";
 const LINE_ADDRESS: &str = "127.0.0.1:7879";
-const LOG_PATH: &str = "src/files/log.txt";
-const SNAPSHOT_PATH: &str = "src/files/snapshot.txt";
+const LOG_PATH: &str = "data/log.txt";
+const SNAPSHOT_PATH: &str = "data/snapshot.txt";
 
 async fn accept_loop<F, Fut>(listener: TcpListener, engine: SharedEngine, handler: F)
 where 
@@ -57,13 +57,17 @@ pub async fn start_connection() -> io::Result<SharedEngine> {
 
     let mut store = Db::new();
 
+    tokio::fs::create_dir_all("data").await?;
     let _snapshot_wal_pos = load_snapshot(SNAPSHOT_PATH, &mut store).await?;
 
     // replays all logs prior to starting
     // truncates log to longest well-formed prefix
     let good_len = replay(LOG_PATH, &mut store).await?;
 
-    let file = std::fs::OpenOptions::new().write(true).open(LOG_PATH)?;
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(LOG_PATH)?;
     file.set_len(good_len)?;
     // release std handle before reopening with async
     drop(file);
@@ -74,7 +78,7 @@ pub async fn start_connection() -> io::Result<SharedEngine> {
         .await?;
 
     // initializes logger to continue appending to log
-    let logger = WriteAheadLog::new(async_file).await?;
+    let logger = WriteAheadLog::new(async_file, LOG_PATH.to_string()).await?;
     let engine = Arc::new(Engine::new(store, logger));
 
     // begin flushing WALs and snapshotting loop asynchronously

@@ -1,7 +1,10 @@
 use crc32fast::Hasher;
 use ordered_float::OrderedFloat;
 use std::io::{self, Cursor, Read};
-use tokio::io::{BufWriter, AsyncWrite, AsyncWriteExt};
+use tokio::{
+    io::{BufWriter, AsyncWrite, AsyncWriteExt}, 
+    fs::File,
+};
 
 use crate::{
     protocol::{Command, reply::Reply},
@@ -14,16 +17,32 @@ const CMD_ZADD: u8 = 3;
 const CMD_ZREM: u8 = 4;
 
 pub struct WriteAheadLog<W: AsyncWrite + Unpin> {
-    pub writer: BufWriter<W>
+    pub writer: BufWriter<W>,
+    path: String,
 }
 
 impl<W: AsyncWrite + Unpin> WriteAheadLog<W> {
-    pub async fn new(writer: W) -> io::Result<Self> {
-        Ok(WriteAheadLog { writer: BufWriter::new(writer) })
+    pub async fn new(writer: W, path: String) -> io::Result<Self> {
+        Ok(WriteAheadLog { writer: BufWriter::new(writer), path })
     }
     
     pub async fn buffered_log(&mut self, record: &[u8]) -> io::Result<()> {
         self.writer.write_all(record).await?;
+        Ok(())
+    }
+}
+
+// requires writer to be File because truncate deals with files only
+impl WriteAheadLog<File> {
+    pub async fn truncate(&mut self) -> io::Result<()> {
+        self.writer.flush().await?;
+        let file = tokio::fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(&self.path)
+            .await?;
+        self.writer = tokio::io::BufWriter::new(file);
         Ok(())
     }
 }
