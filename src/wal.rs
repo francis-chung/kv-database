@@ -7,7 +7,7 @@ use tokio::{
 };
 
 use crate::{
-    protocol::{Command, reply::Reply},
+    protocol::Command,
     stores::store::Db,
 };
 
@@ -131,42 +131,48 @@ impl From<io::Error> for WalError {
 // SET, DEL: [key_len: u32][key_bytes][val_len: u32][val_bytes]
 // ZADD, ZREM: [key_len: u32][key_bytes][member_len: u32][member_bytes][score: f64]
 // uses little-endianness
-pub fn encode_record(cmd: &Command) -> Result<Vec<u8>, Reply> {
+
+pub fn encode_set(key: &str, value: &str) -> Vec<u8> {
     let mut body = Vec::new();
+    body.push(CMD_SET);
+    write_bytes_with_len(&mut body, key.as_bytes());
+    write_bytes_with_len(&mut body, value.as_bytes());
+    finalize_record(body)
+}
 
-    match cmd {
-        Command::Set { key, value } => {
-            body.push(CMD_SET);
-            write_bytes_with_len(&mut body, key.as_bytes());
-            write_bytes_with_len(&mut body, value.as_bytes());
-        }
-        Command::Del { key } => {
-            body.push(CMD_DEL);
-            write_bytes_with_len(&mut body, key.as_bytes());
-        }
-        Command::Zadd { key, member, score } => {
-            body.push(CMD_ZADD);
-            write_bytes_with_len(&mut body, key.as_bytes());
-            write_bytes_with_len(&mut body, member.as_bytes());
-            body.extend_from_slice(&score.0.to_le_bytes());
-        }
-        Command::Zrem { key, member } => {
-            body.push(CMD_ZREM);
-            write_bytes_with_len(&mut body, key.as_bytes());
-            write_bytes_with_len(&mut body, member.as_bytes());
-        }
-        _ => return Err(Reply::Error("ERR unknown command encoded for WAL".to_string())),
-    }
+pub fn encode_del(key: &str) -> Vec<u8> {
+    let mut body = Vec::new();
+    body.push(CMD_DEL);
+    write_bytes_with_len(&mut body, key.as_bytes());
+    finalize_record(body)
+}
 
+pub fn encode_zadd(key: &str, member: &str, score: &OrderedFloat<f64>) -> Vec<u8> {
+    let mut body = Vec::new();
+    body.push(CMD_ZADD);
+    write_bytes_with_len(&mut body, key.as_bytes());
+    write_bytes_with_len(&mut body, member.as_bytes());
+    body.extend_from_slice(&score.0.to_le_bytes());
+    finalize_record(body)
+}
+
+pub fn encode_zrem(key: &str, member: &str) -> Vec<u8> {
+    let mut body = Vec::new();
+    body.push(CMD_ZREM);
+    write_bytes_with_len(&mut body, key.as_bytes());
+    write_bytes_with_len(&mut body, member.as_bytes());
+    finalize_record(body)
+}
+
+fn finalize_record(body: Vec<u8>) -> Vec<u8> {
     let mut hasher = Hasher::new();
     hasher.update(&body);
     let checksum = hasher.finalize();
-
-    let mut record = Vec::with_capacity(4 + 4 + body.len());
+    let mut record = Vec::with_capacity(8 + body.len());
     record.extend_from_slice(&checksum.to_le_bytes());
     record.extend_from_slice(&(body.len() as u32).to_le_bytes());
     record.extend_from_slice(&body);
-    Ok(record)
+    record
 }
 
 // adds char slice into vector buffer in WAL record format

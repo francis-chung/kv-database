@@ -1,5 +1,10 @@
 use crate::engine::SharedEngine;
-use crate::wal::encode_record;
+use crate::wal::{
+    encode_set, 
+    encode_del, 
+    encode_zadd, 
+    encode_zrem,
+};
 use kv_database::protocol::{
     Command, 
     reply::Reply,
@@ -19,10 +24,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             }
         }
         Command::Set { key, value } => {
-            let bytes = match encode_record(&Command::Set { key: key.clone(), value: value.clone() }) {
-                Ok(bytes) => bytes, 
-                Err(err) => return err,
-            };
+            let bytes = encode_set(&key, &value);
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
@@ -34,10 +36,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             Reply::Ok
         }
         Command::Del { key } => {
-            let bytes = match encode_record(&Command::Del { key: key.clone() }) {
-                Ok(bytes) => bytes, 
-                Err(err) => return err,
-            };
+            let bytes = encode_del(&key);
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
@@ -75,10 +74,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             Reply::Ok
         }
         Command::Zadd { key, member, score } => {
-            let bytes = match encode_record(&Command::Zadd { key: key.clone(), member: member.clone(), score }) {
-                Ok(bytes) => bytes, 
-                Err(err) => return err,
-            };
+            let bytes = encode_zadd(&key, &member, &score);
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
@@ -100,10 +96,7 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             }
         }
         Command::Zrem { key, member } => {
-            let bytes = match encode_record(&Command::Zrem { key: key.clone(), member: member.clone() }) {
-                Ok(bytes) => bytes, 
-                Err(err) => return err,
-            };
+            let bytes = encode_zrem(&key, &member);
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
