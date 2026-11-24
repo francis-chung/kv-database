@@ -29,8 +29,6 @@ impl Default for Db {
 pub struct HashMapWrapper<K, V> {
     pub map: HashMap<K, V>,
     cache: LRUCache<K, V>,
-    hits: usize,
-    misses: usize,
 }
 
 impl<K, V> HashMapWrapper<K, V>
@@ -42,8 +40,6 @@ where
         Self {
             map: HashMap::new(),
             cache: LRUCache::<K, V>::new(LRU_CAPACITY),
-            hits: 0,
-            misses: 0,
         }
     }
 
@@ -55,37 +51,27 @@ where
     pub fn get(&mut self, key: &K) -> Option<V> {
         // if key in LRU cache, allows for faster access
         if let Some(value) = self.cache.get(key) {
-            self.hits += 1;
             return Some(value);
         }
         match self.map.get(key) {
             Some(value) => {
-                self.hits += 1;
                 self.cache.put(key.clone(), value.clone());
                 Some(value.clone())
             }
-            None => {
-                self.misses += 1;
-                None
-            }
+            None => None
         }
     }
 
     pub fn contains_key(&mut self, key: &K) -> bool {
         if self.cache.get(key).is_some() {
-            self.hits += 1;
             return true;
         }
         match self.map.get(key) {
             Some(value) => {
-                self.hits += 1;
                 self.cache.put(key.clone(), value.clone());
                 true
             }
-            None => {
-                self.misses += 1;
-                false
-            }
+            None => false
         }
     }
 
