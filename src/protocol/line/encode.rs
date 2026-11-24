@@ -8,7 +8,7 @@ pub fn line_encode(reply: &Reply) -> io::Result<String> {
         Reply::Nil => Ok("NIL\n".to_string()), 
         Reply::SimpleString(string) => Ok(format!("{string}\n")),
         Reply::BulkString(vec) => {
-            let str = String::from_utf8_lossy(&vec).into_owned();
+            let str = String::from_utf8_lossy(vec).into_owned();
             Ok(format!("{str}\n"))
         }
         Reply::Integer(int) => Ok(format!("{}\n", int)), 

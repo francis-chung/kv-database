@@ -7,7 +7,7 @@ pub fn resp_encode(reply: &Reply) -> Vec<u8> {
         Reply::SimpleString(string) => format!("+{string}\r\n").into_bytes(), 
         Reply::BulkString(vec) => {
             let mut out = format!("${}\r\n", vec.len()).into_bytes();
-            out.extend_from_slice(&vec);
+            out.extend_from_slice(vec);
             out.extend_from_slice(b"\r\n");
             out
         }, 

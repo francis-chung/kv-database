@@ -17,7 +17,7 @@ pub(crate) async fn periodic_flush(engine: SharedEngine) {
             eprintln!("WAL flush failed: {e}");
         }
         if let Err(e) = eng.writer.get_ref().sync_data().await {
-            eprintln!("Write to disk failed: {e}")
+            eprintln!("Write to disk failed: {e}");
         }
     }
 }
