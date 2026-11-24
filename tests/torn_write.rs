@@ -38,6 +38,8 @@ impl AsyncWrite for TornWriter {
 
 #[tokio::test]
 async fn torn_write() {
+    const TEST_LOG_PATH: &str = "data/test_log.txt";
+    
     let record1 = match encode_record(&Command::Set { key: "k1".to_string(), value: "v1".to_string() }) {
         Ok(r) => r, 
         Err(_) => { eprintln!("Failed to encode record (WAL failure)"); return; }
@@ -49,7 +51,7 @@ async fn torn_write() {
 
     let limit = record1.len() + record2.len() / 2;
     let torn = TornWriter { buf: Vec::new(), limit };
-    let Ok(mut wal) = WriteAheadLog::new(torn).await else {
+    let Ok(mut wal) = WriteAheadLog::new(torn, TEST_LOG_PATH.to_string()).await else {
         eprintln!("Failed to initialize logger");
         return;
     };
