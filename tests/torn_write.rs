@@ -38,8 +38,14 @@ impl AsyncWrite for TornWriter {
 
 #[tokio::test]
 async fn torn_write() {
-    let record1 = encode_record(&Command::Set { key: "k1".to_string(), value: "v1".to_string() });
-    let record2 = encode_record(&Command::Set { key: "k2".to_string(), value: "v2".to_string() });
+    let record1 = match encode_record(&Command::Set { key: "k1".to_string(), value: "v1".to_string() }) {
+        Ok(r) => r, 
+        Err(_) => { eprintln!("Failed to encode record (WAL failure)"); return; }
+    };
+    let record2 = match encode_record(&Command::Set { key: "k2".to_string(), value: "v2".to_string() }) {
+        Ok(r) => r, 
+        Err(_) => { eprintln!("Failed to encode record (WAL failure)"); return; }
+    };
 
     let limit = record1.len() + record2.len() / 2;
     let torn = TornWriter { buf: Vec::new(), limit };

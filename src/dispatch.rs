@@ -16,7 +16,10 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             }
         }
         Command::Set { key, value } => {
-            let bytes = encode_record(&Command::Set { key: key.clone(), value: value.clone() });
+            let bytes = match encode_record(&Command::Set { key: key.clone(), value: value.clone() }) {
+                Ok(bytes) => bytes, 
+                Err(err) => return err,
+            };
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
@@ -24,7 +27,10 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             Reply::Ok
         }
         Command::Del { key } => {
-            let bytes = encode_record(&Command::Del { key: key.clone() });
+            let bytes = match encode_record(&Command::Del { key: key.clone() }) {
+                Ok(bytes) => bytes, 
+                Err(err) => return err,
+            };
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
@@ -47,7 +53,10 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             Reply::Ok
         }
         Command::Zadd { key, member, score } => {
-            let bytes = encode_record(&Command::Zadd { key: key.clone(), member: member.clone(), score });
+            let bytes = match encode_record(&Command::Zadd { key: key.clone(), member: member.clone(), score }) {
+                Ok(bytes) => bytes, 
+                Err(err) => return err,
+            };
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }
@@ -62,7 +71,10 @@ pub(crate) async fn dispatch(cmd: Command, engine: SharedEngine) -> Reply {
             }
         }
         Command::Zrem { key, member } => {
-            let bytes = encode_record(&Command::Zrem { key: key.clone(), member: member.clone() });
+            let bytes = match encode_record(&Command::Zrem { key: key.clone(), member: member.clone() }) {
+                Ok(bytes) => bytes, 
+                Err(err) => return err,
+            };
             if let Err(reply) = log(&engine, &bytes).await {
                 return reply;
             }

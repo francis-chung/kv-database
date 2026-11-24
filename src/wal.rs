@@ -1,9 +1,12 @@
-use crate::protocol::Command;
-use crate::stores::store::Db;
 use crc32fast::Hasher;
 use ordered_float::OrderedFloat;
 use std::io::{self, Cursor, Read};
 use tokio::io::{BufWriter, AsyncWrite, AsyncWriteExt};
+
+use crate::{
+    protocol::{Command, reply::Reply},
+    stores::store::Db,
+};
 
 const CMD_SET: u8 = 1;
 const CMD_DEL: u8 = 2;
@@ -109,7 +112,7 @@ impl From<io::Error> for WalError {
 // SET, DEL: [key_len: u32][key_bytes][val_len: u32][val_bytes]
 // ZADD, ZREM: [key_len: u32][key_bytes][member_len: u32][member_bytes][score: f64]
 // uses little-endianness
-pub fn encode_record(cmd: &Command) -> Vec<u8> {
+pub fn encode_record(cmd: &Command) -> Result<Vec<u8>, Reply> {
     let mut body = Vec::new();
 
     match cmd {
@@ -133,7 +136,7 @@ pub fn encode_record(cmd: &Command) -> Vec<u8> {
             write_bytes_with_len(&mut body, key.as_bytes());
             write_bytes_with_len(&mut body, member.as_bytes());
         }
-        _ => panic!("Command not loggable in WAL") // TODO: handle error execution properly
+        _ => return Err(Reply::Error("ERR unknown command encoded for WAL".to_string())),
     }
 
     let mut hasher = Hasher::new();
@@ -144,7 +147,7 @@ pub fn encode_record(cmd: &Command) -> Vec<u8> {
     record.extend_from_slice(&checksum.to_le_bytes());
     record.extend_from_slice(&(body.len() as u32).to_le_bytes());
     record.extend_from_slice(&body);
-    record
+    Ok(record)
 }
 
 // adds char slice into vector buffer in WAL record format
