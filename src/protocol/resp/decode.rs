@@ -4,7 +4,7 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt};
 const MAX_ARRAY_LEN: usize = 1024;
 const MAX_BULK_LEN: usize = 512 * 1024 * 1024;
 
-pub async fn resp_decode<R>(reader: &mut R) -> io::Result<Option<Vec<Vec<u8>>>>
+pub async fn resp_decode<R>(reader: &mut R, out: &mut Vec<Vec<u8>>) -> io::Result<bool>
 where 
     R: AsyncBufRead + Unpin,
 {
@@ -12,13 +12,13 @@ where
 
     // header: *<count>\r\n
     if reader.read_until(b'\n', &mut line).await? == 0 {
-        return Ok(None)
+        return Ok(false);
     }
     let header = strip_crlf(&line)?;
     let count = parse_prefixed(header, b'*', MAX_ARRAY_LEN)?;
+    out.truncate(count);       // drop any extra Vecs of tokens from previous command
 
-    let mut result = Vec::with_capacity(count);
-    for _ in 0..count {
+    for i in 0..count {
         line.clear();
         
         // bulk string: $<len>\r\n
@@ -28,15 +28,19 @@ where
         let bulk_header = strip_crlf(&line)?;
         let len = parse_prefixed(bulk_header, b'$', MAX_BULK_LEN)?;
 
-        let mut buf = vec![0u8; len + 2];
-        reader.read_exact(&mut buf).await?;
+        if i >= out.len() {
+            out.push(Vec::new());
+        }
+        let buf = &mut out[i];
+        buf.clear();
+        buf.resize(len + 2, 0);
+        reader.read_exact(buf).await?;
         if !buf.ends_with(b"\r\n") {
             return Err(invalid("bulk string not terminated by CRLF"));
         }
         buf.truncate(len);
-        result.push(buf);
     }
-    Ok(Some(result))
+    Ok(true)
 }
 
 fn strip_crlf(line: &[u8]) -> io::Result<&[u8]> {

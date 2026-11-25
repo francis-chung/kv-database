@@ -21,10 +21,11 @@ pub(crate) async fn handle_resp_connection(stream: TcpStream, engine: SharedEngi
     let mut buf_reader = BufReader::new(reader);
     let mut buf_writer = BufWriter::new(writer);
 
+    let mut tokens: Vec<Vec<u8>> = Vec::new();
     loop {
-        let tokens = match resp_decode(&mut buf_reader).await {
-            Ok(Some(lines)) => lines, 
-            Ok(None) => return Ok(()), 
+        match resp_decode(&mut buf_reader, &mut tokens).await {
+            Ok(true) => (), 
+            Ok(false) => return Ok(()), 
             Err(e) => {
                 // report error and close connection, since byte offset
                 // is now unknown
