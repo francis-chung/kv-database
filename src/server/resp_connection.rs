@@ -1,6 +1,6 @@
 use std::io;
 use tokio::{
-    io::{BufReader, AsyncWriteExt}, 
+    io::{BufReader, BufWriter, AsyncWriteExt}, 
     net::TcpStream,
 };
 
@@ -17,8 +17,9 @@ use crate::{
 };
 
 pub(crate) async fn handle_resp_connection(stream: TcpStream, engine: SharedEngine) -> io::Result<()> {
-    let (reader, mut writer) = stream.into_split();
+    let (reader, writer) = stream.into_split();
     let mut buf_reader = BufReader::new(reader);
+    let mut buf_writer = BufWriter::new(writer);
 
     loop {
         let tokens = match resp_decode(&mut buf_reader).await {
@@ -28,11 +29,16 @@ pub(crate) async fn handle_resp_connection(stream: TcpStream, engine: SharedEngi
                 // report error and close connection, since byte offset
                 // is now unknown
                 let reply = Reply::Error(format!("ERR protocol error: {e}"));
-                let _ = writer.write_all(&resp_encode(&reply)).await;
+                let _ = buf_writer.write_all(&resp_encode(&reply)).await;
                 return Ok(());
             }
         };
         let response = resp_encode(&execute_tokens(&engine, &tokens).await);
-        writer.write_all(&response).await?;
+        buf_writer.write_all(&response).await?;
+
+        // push replies only when read buffer is empty
+        if buf_reader.buffer().is_empty() {
+            buf_writer.flush().await?;
+        }
     }
 }

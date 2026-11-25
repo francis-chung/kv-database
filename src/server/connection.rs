@@ -1,7 +1,7 @@
 use std::io;
 use tokio::{
     net::TcpStream,
-    io::{BufReader, AsyncWriteExt},
+    io::{BufReader, BufWriter, AsyncWriteExt},
 };
 
 use kv_database::protocol::{
@@ -18,9 +18,10 @@ pub(crate) async fn handle_connection(stream: TcpStream, engine: SharedEngine) -
     // into_split used for looping while requesting and responding later
     // into_split consumes stream and uses Arc-like architecture
     // both halves can be used and mutated without Mutex
-    let (reader, mut writer) = stream.into_split();
+    let (reader, writer) = stream.into_split();
     // enables async buffering
     let mut buf_reader = BufReader::new(reader);
+    let mut buf_writer = BufWriter::new(writer);
     // byte vector allows non-UTF-8 characters, handled later
     let mut line_bytes = Vec::new();
 
@@ -35,9 +36,13 @@ pub(crate) async fn handle_connection(stream: TcpStream, engine: SharedEngine) -
             }
         }
         let response = execute_command(&engine, &line_bytes).await;
-        if let Err(e) = writer.write_all(response.as_bytes()).await {
+        if let Err(e) = buf_writer.write_all(response.as_bytes()).await {
             eprintln!("Write error: {e}");
             break;
+        }
+
+        if buf_reader.buffer().is_empty() {
+            buf_writer.flush().await?;
         }
     }
     Ok(())
