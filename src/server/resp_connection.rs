@@ -29,12 +29,15 @@ pub(crate) async fn handle_resp_connection(stream: TcpStream, engine: SharedEngi
                 // report error and close connection, since byte offset
                 // is now unknown
                 let reply = Reply::Error(format!("ERR protocol error: {e}"));
-                let _ = buf_writer.write_all(&resp_encode(&reply)).await;
+                let mut out = Vec::new();
+                resp_encode(&reply, &mut out);
+                let _ = buf_writer.write_all(&out).await;
                 return Ok(());
             }
         };
-        let response = resp_encode(&execute_tokens(&engine, &tokens).await);
-        buf_writer.write_all(&response).await?;
+        let mut out = Vec::new();
+        resp_encode(&execute_tokens(&engine, &tokens).await, &mut out);
+        buf_writer.write_all(&out).await?;
 
         // push replies only when read buffer is empty
         if buf_reader.buffer().is_empty() {
